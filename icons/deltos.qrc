@@ -1,0 +1,11 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/icons">
+    <file>deltos-16.png</file>
+    <file>deltos-32.png</file>
+    <file>deltos-48.png</file>
+    <file>deltos-64.png</file>
+    <file>deltos-128.png</file>
+    <file>deltos-256.png</file>
+    <file>deltos-512.png</file>
+</qresource>
+</RCC>

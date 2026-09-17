@@ -1,0 +1,86 @@
+cmake_minimum_required(VERSION 3.21)
+project(Deltos VERSION 0.1 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Widgets Gui Concurrent)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs dnn)
+if(OpenCV_VERSION VERSION_GREATER_EQUAL 5)
+    find_package(OpenCV REQUIRED COMPONENTS geometry)
+endif()
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(Tesseract REQUIRED IMPORTED_TARGET tesseract)
+pkg_check_modules(HEIF IMPORTED_TARGET libheif)
+
+# Core: pure OpenCV, no Qt widgets
+add_library(deltos_core STATIC
+    src/core/Quad.h
+    src/core/Models.h
+    src/core/CvCompat.h
+    src/core/DocumentDetector.h src/core/DocumentDetector.cpp
+    src/core/Geometry.h src/core/Geometry.cpp
+    src/core/Rectifier.h src/core/Rectifier.cpp
+    src/core/Enhancer.h src/core/Enhancer.cpp
+    src/core/Pipeline.h src/core/Pipeline.cpp
+    src/core/ReferenceCard.h src/core/ReferenceCard.cpp
+    src/core/Exif.h src/core/Exif.cpp
+    src/core/CvQt.h src/core/CvQt.cpp
+    src/core/ImageLoader.h src/core/ImageLoader.cpp
+    src/core/Orientation.h src/core/Orientation.cpp
+    src/core/Models.cpp
+    src/core/Scan.h src/core/Scan.cpp
+)
+target_include_directories(deltos_core PUBLIC src)
+target_link_libraries(deltos_core PUBLIC ${OpenCV_LIBS} PkgConfig::Tesseract Qt6::Gui)
+if(HEIF_FOUND)
+    target_link_libraries(deltos_core PUBLIC PkgConfig::HEIF)
+    target_compile_definitions(deltos_core PRIVATE DELTOS_HAVE_HEIF)
+endif()
+
+# GUI application
+add_executable(deltos
+    src/main.cpp
+    src/cli/Cli.h src/cli/Cli.cpp
+    src/ui/MainWindow.h src/ui/MainWindow.cpp
+    src/ui/QuadEditorView.h src/ui/QuadEditorView.cpp
+    src/ui/BusyOverlay.h src/ui/BusyOverlay.cpp
+    src/ui/PageModel.h src/ui/PageModel.cpp
+    src/export/PdfExporter.h src/export/PdfExporter.cpp
+    src/export/ImageExporter.h src/export/ImageExporter.cpp
+    icons/deltos.qrc
+)
+target_link_libraries(deltos PRIVATE deltos_core Qt6::Widgets Qt6::Gui Qt6::Concurrent)
+
+set(DELTOS_MODEL ${CMAKE_SOURCE_DIR}/models/fastvit_sa24_h_e_bifpn_256_fp32.onnx)
+
+# Application icon and model per platform
+if(APPLE)
+    set_source_files_properties(icons/deltos.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    set_source_files_properties(${DELTOS_MODEL} PROPERTIES MACOSX_PACKAGE_LOCATION Resources/models)
+    target_sources(deltos PRIVATE icons/deltos.icns ${DELTOS_MODEL})
+    set_target_properties(deltos PROPERTIES
+        MACOSX_BUNDLE ON
+        MACOSX_BUNDLE_BUNDLE_NAME Deltos
+        MACOSX_BUNDLE_GUI_IDENTIFIER com.panayotis.deltos
+        MACOSX_BUNDLE_ICON_FILE deltos.icns
+        MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION})
+elseif(WIN32)
+    target_sources(deltos PRIVATE icons/deltos.rc)
+    set_target_properties(deltos PROPERTIES WIN32_EXECUTABLE ON)
+else()
+    include(GNUInstallDirs)
+    install(TARGETS deltos RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${DELTOS_MODEL} DESTINATION ${CMAKE_INSTALL_DATADIR}/deltos/models)
+    install(FILES icons/deltos.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    install(FILES icons/deltos.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+    foreach(s 16 32 48 64 128 256 512)
+        install(FILES icons/deltos-${s}.png DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${s}x${s}/apps RENAME deltos.png)
+    endforeach()
+endif()
+
+# Model next to the binary for running from the build tree
+file(COPY ${DELTOS_MODEL} DESTINATION ${CMAKE_BINARY_DIR}/models)
