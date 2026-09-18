@@ -9,10 +9,10 @@ real physical dimensions. Works as a GUI and from the command line.
 ## Input and output
 
 **Input**: any image format the installed Qt image plugins can read — JPEG, PNG,
-TIFF, WebP, BMP, and HEIC/HEIF (iPhone photos) when the kimageformats plugin
+TIFF, WebP, BMP, and HEIC/HEIF when the kimageformats plugin
 is present. EXIF orientation is applied on load, and EXIF metadata is used by
 the pipeline (see below). Open files with the toolbar button, on the command
-line, or by dragging them onto the window.
+line, by dragging them onto the window, or straight from a phone (see below).
 
 **Output**, from the *Export* dropdown:
 
@@ -26,6 +26,30 @@ line, or by dragging them onto the window.
 
 The output keeps the source pixel scale of the document's longest edge, so a
 12 MP photo of an A4 sheet gives roughly a 300 dpi scan.
+
+## From a phone
+
+Photos must arrive with their metadata intact: the focal length gives the true
+page shape and, on iPhones with LiDAR, the camera distance gives the physical
+size without a reference card. Messaging apps (WhatsApp, Messenger, mail)
+strip that and shrink the image. Deltos therefore receives photos directly over
+the local network: turn on *Open → Receive from phone*. Two ways:
+
+- **Browser**: scan the QR code with the phone's camera, or type the address
+  (e.g. `http://192.168.1.5:53317/`) in its browser, and pick the photos.
+  Nothing to install. iOS uploads photos as full-resolution JPEG with the
+  metadata intact (WebKit converts HEIC on upload); that loses nothing Deltos
+  needs.
+- **LocalSend app**: with the free, open-source [LocalSend](https://localsend.org)
+  app (iOS and Android), share the photos and pick "Deltos (hostname)" from the
+  device list. This is the only way to get the original HEIC untouched.
+
+Both use port 53317 (TCP; plus UDP multicast for LocalSend discovery). If the
+phone cannot connect, open that port in the computer's firewall. If the port
+is taken (the LocalSend desktop app is running) Deltos takes the next free one
+and shows it, so both can run together as long as that port is open too. The
+receiver is plain HTTP on the local network, accepts image files only, and
+listens only while *Receive from phone* is on.
 
 ## What it does
 
@@ -53,7 +77,7 @@ The output keeps the source pixel scale of the document's longest edge, so a
 
 ## Dependencies
 
-Qt 6 (Widgets, Gui, Concurrent), OpenCV 4 or 5 (core, imgproc, imgcodecs, dnn;
+Qt 6 (Widgets, Gui, Concurrent, Network), OpenCV 4 or 5 (core, imgproc, imgcodecs, dnn;
 `geometry` on OpenCV 5), Tesseract 5 with `osd`, `ell`, `eng` traineddata,
 libheif (optional, for EXIF in HEIC). HEIC decoding itself comes from the Qt
 image-format plugins (kimageformats).
@@ -67,9 +91,9 @@ order, in the first place it exists:
 2. `../models` relative to the executable
 3. `../Resources/models` (inside `Deltos.app`)
 4. `../share/deltos/models` (Linux install prefix)
-5. the per-user application data directory: `~/.local/share/panayotis/Deltos/models`
-   on Linux, `~/Library/Application Support/panayotis/Deltos/models` on macOS,
-   `%APPDATA%\panayotis\Deltos\models` on Windows
+5. the per-user application data directory: `~/.local/share/deltos/models`
+   on Linux, `~/Library/Application Support/deltos/models` on macOS,
+   `%APPDATA%\deltos\models` on Windows
 6. `models/` in the current directory
 
 A different DocAligner model with the same interface can be given with
@@ -113,4 +137,5 @@ before the extension when there are several images).
 
 ## License
 
-GPL-3.0-only, see `LICENSE`.
+GPL-3.0-only, see `LICENSE`. The detection model is Apache 2.0 (`models/LICENSE`)
+and the bundled QR code generator (`third_party/qrcodegen`, Project Nayuki) is MIT.

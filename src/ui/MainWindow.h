@@ -3,6 +3,7 @@
 #include "core/DocumentDetector.h"
 #include "core/Scan.h"
 #include "cli/Cli.h"
+#include "net/LocalSendReceiver.h"
 #include <QFutureWatcher>
 #include <QMainWindow>
 #include <memory>
@@ -55,6 +56,8 @@ private:
     void showResult(int row);
     void exportPdf(bool currentOnly);
     void exportImage(const QString& format);
+    void setReceiving(bool on);
+    void showPhoneQr();
 
     PageModel* model_ = nullptr;
     QListView* list_ = nullptr;
@@ -66,10 +69,13 @@ private:
     QLabel* strengthLabel_ = nullptr;
     QTimer* strengthTimer_ = nullptr;
     QLabel* status_ = nullptr;
+    QLabel* receiveStatus_ = nullptr;
     QComboBox* sizeBox_ = nullptr;
     QDoubleSpinBox* widthSpin_ = nullptr;
     QLabel* heightLabel_ = nullptr;
     QAction* swapAction_ = nullptr;
+    QAction* phoneAction_ = nullptr;
+    QAction* qrAction_ = nullptr;
     BusyOverlay* editorBusy_ = nullptr;
     BusyOverlay* resultBusy_ = nullptr;
     QWidget* sizeRow_ = nullptr;
@@ -77,6 +83,7 @@ private:
     int activeJobs_ = 0;
 
     Options opt_;
+    LocalSendReceiver* receiver_ = nullptr;
     std::unique_ptr<DocumentDetector> detector_;
 
     struct Job { int row; quint64 gen; Scan scan; QImage thumb; };

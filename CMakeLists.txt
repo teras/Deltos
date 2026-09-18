@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Gui Concurrent)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Gui Concurrent Network)
 find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs dnn)
 if(OpenCV_VERSION VERSION_GREATER_EQUAL 5)
     find_package(OpenCV REQUIRED COMPONENTS geometry)
@@ -48,11 +48,15 @@ add_executable(deltos
     src/ui/QuadEditorView.h src/ui/QuadEditorView.cpp
     src/ui/BusyOverlay.h src/ui/BusyOverlay.cpp
     src/ui/PageModel.h src/ui/PageModel.cpp
+    src/ui/QrImage.h src/ui/QrImage.cpp
     src/export/PdfExporter.h src/export/PdfExporter.cpp
     src/export/ImageExporter.h src/export/ImageExporter.cpp
+    src/net/LocalSendReceiver.h src/net/LocalSendReceiver.cpp
+    third_party/qrcodegen/qrcodegen.hpp third_party/qrcodegen/qrcodegen.cpp
     icons/deltos.qrc
 )
-target_link_libraries(deltos PRIVATE deltos_core Qt6::Widgets Qt6::Gui Qt6::Concurrent)
+target_include_directories(deltos PRIVATE third_party/qrcodegen)
+target_link_libraries(deltos PRIVATE deltos_core Qt6::Widgets Qt6::Gui Qt6::Concurrent Qt6::Network)
 
 set(DELTOS_MODEL ${CMAKE_SOURCE_DIR}/models/fastvit_sa24_h_e_bifpn_256_fp32.onnx)
 
@@ -64,7 +68,7 @@ if(APPLE)
     set_target_properties(deltos PROPERTIES
         MACOSX_BUNDLE ON
         MACOSX_BUNDLE_BUNDLE_NAME Deltos
-        MACOSX_BUNDLE_GUI_IDENTIFIER com.panayotis.deltos
+        MACOSX_BUNDLE_GUI_IDENTIFIER onl.ycode.deltos
         MACOSX_BUNDLE_ICON_FILE deltos.icns
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION})

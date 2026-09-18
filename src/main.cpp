@@ -8,6 +8,9 @@
 int main(int argc, char** argv) {
     // findModel() needs an application object for applicationDirPath(); a GUI one is
     // fine for the options themselves, so decide the mode first from argv alone.
+    // Lower-case, no organisation: data in ~/.local/share/deltos (and the platform equivalents).
+    QCoreApplication::setApplicationName("deltos");
+    QGuiApplication::setApplicationDisplayName("Deltos");
     bool noGui = false;
     for (int i = 1; i < argc; ++i) noGui |= std::strcmp(argv[i], "--no-gui") == 0;
     if (noGui) {
@@ -20,8 +23,6 @@ int main(int argc, char** argv) {
     QApplication app(argc, argv);
     const auto opt = deltos::parseOptions(argc, argv);
     if (!opt) return 2;
-    QCoreApplication::setApplicationName("Deltos");
-    QCoreApplication::setOrganizationName("panayotis");
     QGuiApplication::setDesktopFileName("deltos"); // Wayland/GNOME match the window to the .desktop icon by this name
     QIcon icon;
     for (int s : {16, 32, 48, 64, 128, 256, 512}) icon.addFile(QStringLiteral(":/icons/deltos-%1.png").arg(s));

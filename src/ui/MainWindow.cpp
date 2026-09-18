@@ -5,11 +5,16 @@
 #include "core/ImageLoader.h"
 #include "core/Scan.h"
 #include "export/ImageExporter.h"
+#include "QrImage.h"
 #include <cmath>
 #include <QDoubleSpinBox>
 #include <QHBoxLayout>
 #include <QApplication>
 #include <QComboBox>
+#include <QDialog>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QVBoxLayout>
 #include <QDir>
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -35,6 +40,11 @@
 
 namespace deltos {
 
+// ~/.config/deltos.conf (and the platform equivalents) rather than Qt's organisation/app tree.
+static QString settingsPath() {
+    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/deltos.conf";
+}
+
 MainWindow::MainWindow(const Options& opt, QWidget* parent) : QMainWindow(parent), opt_(opt) {
     setWindowTitle("Deltos");
     resize(1300, 800);
@@ -45,10 +55,12 @@ MainWindow::MainWindow(const Options& opt, QWidget* parent) : QMainWindow(parent
     detector_->modelWantsRgb = opt_.rgb;
 
     buildUi();
-    if (detector_->hasModel())
-        status_->setText(tr("Model: %1").arg(QString::fromStdString(detector_->modelName())));
-    else
-        status_->setText(tr("No model found – using edge detection only"));
+    status_->setText(detector_->hasModel() ? tr("Model: %1").arg(QString::fromStdString(detector_->modelName()))
+                                           : tr("No model found – using edge detection only"));
+
+    receiver_ = new LocalSendReceiver(this);
+    connect(receiver_, &LocalSendReceiver::fileReceived, this, [this](const QString& path) { addFiles({path}); });
+    phoneAction_->setChecked(QSettings(settingsPath(), QSettings::IniFormat).value("receiver/enabled", false).toBool());
 
 }
 
@@ -88,7 +100,18 @@ void MainWindow::buildUi() {
     auto* tb = addToolBar(tr("Main"));
     toolbar_ = tb;
     tb->setMovable(false);
-    tb->addAction(tr("Open…"), QKeySequence::Open, this, &MainWindow::openFiles);
+    auto* openMenu = new QMenu(this);
+    openMenu->addAction(tr("Open files…"), QKeySequence::Open, this, &MainWindow::openFiles);
+    phoneAction_ = openMenu->addAction(tr("Receive from phone"));
+    phoneAction_->setCheckable(true);
+    connect(phoneAction_, &QAction::toggled, this, &MainWindow::setReceiving);
+    qrAction_ = openMenu->addAction(tr("QR code…"), this, &MainWindow::showPhoneQr);
+    qrAction_->setEnabled(false);
+    auto* openButton = new QToolButton;
+    openButton->setText(tr("Open"));
+    openButton->setMenu(openMenu);
+    openButton->setPopupMode(QToolButton::InstantPopup);
+    tb->addWidget(openButton);
     tb->addAction(tr("Detect again"), this, &MainWindow::redetect);
     tb->addAction(tr("Rotate 90°"), this, &MainWindow::rotateResult);
     tb->addAction(tr("Remove page"), QKeySequence::Delete, this, &MainWindow::removePage);
@@ -192,10 +215,45 @@ void MainWindow::buildUi() {
 
     status_ = new QLabel;
     statusBar()->addWidget(status_, 1);
+    receiveStatus_ = new QLabel;
+    statusBar()->addPermanentWidget(receiveStatus_);
 
     editorBusy_ = new BusyOverlay(editor_);
     resultBusy_ = new BusyOverlay(resultView_);
     resultBusy_->setText(tr("Processing…"));
+}
+
+void MainWindow::setReceiving(bool on) {
+    QSettings(settingsPath(), QSettings::IniFormat).setValue("receiver/enabled", on);
+    if (on && !receiver_->isRunning() && !receiver_->start()) {
+        phoneAction_->setChecked(false);
+        QMessageBox::warning(this, tr("Receive from phone"), tr("Could not open a port for receiving."));
+        return;
+    }
+    if (!on) receiver_->stop();
+    qrAction_->setEnabled(on);
+    receiveStatus_->setText(on ? tr("Receiving on port %1 ").arg(receiver_->port()) : QString());
+    receiveStatus_->setToolTip(on ? tr("LocalSend app → \"%1\", browser → %2").arg(receiver_->alias(), receiver_->url()) : QString());
+}
+
+// QR code of the upload page, for the phone's camera.
+void MainWindow::showPhoneQr() {
+    const QString url = receiver_->url();
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Receive from phone"));
+    auto* layout = new QVBoxLayout(&dlg);
+    auto* pic = new QLabel;
+    pic->setPixmap(QPixmap::fromImage(qrImage(url)));
+    pic->setAlignment(Qt::AlignCenter);
+    layout->addWidget(pic);
+    auto* text = new QLabel(tr("<p>Scan with the phone's camera, or open<br><b>%1</b><br>in its browser and pick the photos.</p>"
+                               "<p>With the LocalSend app, send to <b>%2</b>.</p>"
+                               "<p style='color:gray'>Port %3 must be open in this computer's firewall.</p>")
+                                .arg(url, receiver_->alias()).arg(receiver_->port()));
+    text->setAlignment(Qt::AlignCenter);
+    text->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    layout->addWidget(text);
+    dlg.exec();
 }
 
 void MainWindow::setBusy(int delta) {
