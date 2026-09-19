@@ -1,10 +1,13 @@
 #include "Cli.h"
 #include "core/ImageLoader.h"
 #include "core/Models.h"
+#include "core/Ocr.h"
+#include "core/Settings.h"
 #include "core/Scan.h"
 #include "export/ImageExporter.h"
 #include "export/PdfExporter.h"
 #include <QFileInfo>
+#include <QSettings>
 #include <QString>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
@@ -27,6 +30,9 @@ static void usage() {
         "  --focal PX        camera focal length in pixels (default: from EXIF)\n"
         "  --self-focal      estimate the focal length from the image instead of EXIF\n"
         "  --no-snap         do not snap the aspect ratio to a standard paper size\n"
+        "  --ocr             also read the text of each page (printed here, selectable in the GUI)\n"
+        "  --ocr-lang SPEC   tesseract language(s) for --ocr, '+'-joined; default is the language\n"
+        "                    last picked in the GUI, else the system language plus English\n"
         "  --bgr             feed the model BGR instead of RGB\n"
         "  --dpi N           page density for images of unknown physical size (default 300)\n"
         "--out only applies with --no-gui; every other option applies to both modes.\n"
@@ -58,10 +64,16 @@ std::optional<Options> parseOptions(int argc, char** argv) {
         else if (a == "--self-focal") o.process.focalPx = -1;
         else if (a == "--no-model") o.model.clear();
         else if (a == "--no-snap") o.process.snapAspect = false;
+        else if (a == "--ocr") o.ocr = true;
+        else if (a == "--ocr-lang" && hasValue) { o.ocrLanguage = argv[++i]; o.ocr = true; }
         else if (a == "--bgr") o.rgb = false;
         else if (a.rfind("--", 0) == 0) { usage(); return std::nullopt; }
         else o.inputs.push_back(a);
     }
+    if (o.ocrLanguage.empty())
+        o.ocrLanguage = QSettings(settingsPath(), QSettings::IniFormat)
+                            .value("ocr/language", QString::fromStdString(Ocr::defaultLanguage()))
+                            .toString().toStdString();
     if (!o.noGui && !o.out.empty()) {
         std::cerr << "--out is ignored without --no-gui\n";
         o.out.clear();
@@ -118,6 +130,11 @@ int runCli(const Options& opt) {
                       << src[int(s.sizeSource)] << (s.measuredBy[0] ? std::string(", ") + s.measuredBy : "") << ")\n";
         }
         std::cout << "  orientation: " << s.autoRotation << " deg, output " << s.image.cols << "x" << s.image.rows << "\n";
+        if (opt.ocr) {
+            const Ocr::Result o = Ocr::run(s.rectified, opt.ocrLanguage);
+            std::cout << "  ocr [" << opt.ocrLanguage << "]: " << o.words.size() << " words\n";
+            if (!o.text.empty()) std::cout << o.text << "\n";
+        }
 
         if (!debug.empty()) {
             cv::Mat d = li.bgr.clone();

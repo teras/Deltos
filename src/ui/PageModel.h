@@ -1,6 +1,7 @@
 #pragma once
 #include "core/Quad.h"
 #include "core/Enhancer.h"
+#include "core/Ocr.h"
 #include <QAbstractListModel>
 #include <QImage>
 #include <QString>
@@ -22,6 +23,9 @@ struct Page {
     int autoRotation = -1; // text-orientation fix from OSD, degrees CW; -1 = not yet detected
     int rotation = 0;      // extra user rotation on top, degrees CW (0/90/180/270)
     cv::Mat result;        // processed output (may be empty until computed)
+    cv::Mat rectified;     // un-enhanced page, same size as result: what OCR reads
+    Ocr::Result ocr;       // text found on demand; dropped whenever the page is reprocessed
+    bool ocrDone = false;
     double autoWidthMm = 0;  // physical width found automatically (0 = unknown)
     int autoSizeSource = 0;  // Processed::SizeSource of the automatic value
     double widthMm = 0;      // effective width: manual override if set, else automatic

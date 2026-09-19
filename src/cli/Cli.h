@@ -1,4 +1,5 @@
 #pragma once
+#include "core/Ocr.h"
 #include "core/Pipeline.h"
 #include "export/PdfExporter.h"
 #include <optional>
@@ -14,6 +15,8 @@ struct Options {
     bool rgb = true;                // model input channel order
     ProcessOptions process;         // mode, strength, snapAspect, focalPx (0 = EXIF, -1 = self-estimate)
     PdfOptions pdf;
+    bool ocr = false;               // recognise the text: printed headless, shown as boxes in the GUI
+    std::string ocrLanguage;        // --ocr-lang; empty = saved setting, else the system language
     std::string out;                // output file, headless only
     std::vector<std::string> inputs;
 };

@@ -42,6 +42,7 @@ Scan scanDocument(DocumentDetector& det, const ScanInput& in) {
 
     Processed pr = processDocument(in.source, s.quad, opt);
     s.image = pr.image;
+    s.rectified = pr.rectified;
     s.widthMm = pr.widthMm;
     s.sizeSource = pr.sizeSource;
     s.measuredBy = pr.measuredBy;
@@ -54,9 +55,11 @@ Scan scanDocument(DocumentDetector& det, const ScanInput& in) {
         s.autoRotation = o.ok ? o.degreesCW : 0;
     }
     const int rot = (s.autoRotation + in.userRotation) % 360;
-    if (rot == 90) cv::rotate(s.image, s.image, cv::ROTATE_90_CLOCKWISE);
-    else if (rot == 180) cv::rotate(s.image, s.image, cv::ROTATE_180);
-    else if (rot == 270) cv::rotate(s.image, s.image, cv::ROTATE_90_COUNTERCLOCKWISE);
+    if (rot == 90 || rot == 180 || rot == 270) {
+        const auto code = rot == 90 ? cv::ROTATE_90_CLOCKWISE : rot == 180 ? cv::ROTATE_180 : cv::ROTATE_90_COUNTERCLOCKWISE;
+        cv::rotate(s.image, s.image, code);
+        cv::rotate(s.rectified, s.rectified, code);
+    }
     // widthMm describes the unrotated width; after a 90/270 turn it becomes the height.
     if (s.widthMm > 0 && (rot == 90 || rot == 270)) s.widthMm = s.widthMm * s.image.cols / s.image.rows;
     return s;

@@ -6,6 +6,7 @@
 #include "net/LocalSendReceiver.h"
 #include <QFutureWatcher>
 #include <QMainWindow>
+#include <QStringList>
 #include <memory>
 
 class QListView;
@@ -18,11 +19,15 @@ class QDoubleSpinBox;
 class QAction;
 class QToolBar;
 class QTimer;
+class QPushButton;
+class QToolButton;
+class QMenu;
 
 namespace deltos {
 
 class QuadEditorView;
 class BusyOverlay;
+class OcrTextItem;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -54,6 +59,12 @@ private:
     void updateStrengthTip();
     void reprocess(int row);
     void showResult(int row);
+    void runOcr();
+    void placeCopyButton(const QPointF& sceneEnd, bool hasSelection);
+    void updateOcrRow();
+    void buildLanguageMenu();
+    std::string ocrLanguage() const;   // the ticked languages, '+'-joined for Tesseract
+    bool installedLanguage(const QString& code) const;   // is there a menu entry for it?
     void exportPdf(bool currentOnly);
     void exportImage(const QString& format);
     void setReceiving(bool on);
@@ -64,6 +75,12 @@ private:
     QuadEditorView* editor_ = nullptr;
     QGraphicsView* resultView_ = nullptr;
     QGraphicsPixmapItem* resultItem_ = nullptr;
+    OcrTextItem* ocrItem_ = nullptr;
+    QPushButton* ocrButton_ = nullptr;
+    QPushButton* copyButton_ = nullptr;   // floats next to the end of the sweep
+    QToolButton* ocrLangButton_ = nullptr;
+    QMenu* ocrLangMenu_ = nullptr;
+    QStringList ocrOrder_;   // ticked language codes, in the order they were picked
     QComboBox* modeBox_ = nullptr;
     QSlider* strength_ = nullptr;
     QLabel* strengthLabel_ = nullptr;
@@ -81,6 +98,7 @@ private:
     QWidget* sizeRow_ = nullptr;
     QToolBar* toolbar_ = nullptr;
     int activeJobs_ = 0;
+    bool ocrRunning_ = false;
 
     Options opt_;
     LocalSendReceiver* receiver_ = nullptr;

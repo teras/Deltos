@@ -30,6 +30,8 @@ add_library(deltos_core STATIC
     src/core/CvQt.h src/core/CvQt.cpp
     src/core/ImageLoader.h src/core/ImageLoader.cpp
     src/core/Orientation.h src/core/Orientation.cpp
+    src/core/Ocr.h src/core/Ocr.cpp
+    src/core/Tessdata.h src/core/Tessdata.cpp
     src/core/Models.cpp
     src/core/Scan.h src/core/Scan.cpp
 )
@@ -48,6 +50,8 @@ add_executable(deltos
     src/ui/QuadEditorView.h src/ui/QuadEditorView.cpp
     src/ui/BusyOverlay.h src/ui/BusyOverlay.cpp
     src/ui/PageModel.h src/ui/PageModel.cpp
+    src/ui/OcrTextItem.h src/ui/OcrTextItem.cpp
+    src/ui/LanguageDialog.h src/ui/LanguageDialog.cpp
     src/ui/QrImage.h src/ui/QrImage.cpp
     src/export/PdfExporter.h src/export/PdfExporter.cpp
     src/export/ImageExporter.h src/export/ImageExporter.cpp

@@ -1,8 +1,12 @@
 #include "MainWindow.h"
+#include "LanguageDialog.h"
 #include "QuadEditorView.h"
 #include "BusyOverlay.h"
+#include "OcrTextItem.h"
 #include "core/CvQt.h"
 #include "core/ImageLoader.h"
+#include "core/Ocr.h"
+#include "core/Settings.h"
 #include "core/Scan.h"
 #include "export/ImageExporter.h"
 #include "QrImage.h"
@@ -27,6 +31,9 @@
 #include <QListView>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QIcon>
+#include <QLocale>
+#include <QPushButton>
 #include <QSlider>
 #include <QSplitter>
 #include <QTimer>
@@ -39,11 +46,6 @@
 #include <opencv2/imgproc.hpp>
 
 namespace deltos {
-
-// ~/.config/deltos.conf (and the platform equivalents) rather than Qt's organisation/app tree.
-static QString settingsPath() {
-    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/deltos.conf";
-}
 
 MainWindow::MainWindow(const Options& opt, QWidget* parent) : QMainWindow(parent), opt_(opt) {
     setWindowTitle("Deltos");
@@ -69,6 +71,9 @@ void MainWindow::jobFinished(const Job& j) {
     Page& p = model_->page(j.row);
     const Scan& s = j.scan;
     p.result = s.image;
+    p.rectified = s.rectified;
+    p.ocr = {};
+    p.ocrDone = false;
     p.thumbnail = j.thumb;
     p.autoRotation = s.autoRotation;
     p.autoWidthMm = s.widthMm;
@@ -93,7 +98,10 @@ void MainWindow::jobFinished(const Job& j) {
         }
     }
     model_->pageChanged(j.row);
-    if (j.row == current_) showResult(j.row);
+    if (j.row == current_) {
+        showResult(j.row);
+        if (opt_.ocr) runOcr();   // --ocr reads the page in view as soon as it is ready
+    }
 }
 
 void MainWindow::buildUi() {
@@ -171,6 +179,18 @@ void MainWindow::buildUi() {
     resultView_->setBackgroundBrush(QColor(60, 60, 60));
     resultView_->setRenderHints(QPainter::SmoothPixmapTransform);
     resultItem_ = resultView_->scene()->addPixmap({});
+    ocrItem_ = new OcrTextItem(resultItem_);   // child: follows the page pixmap
+    copyButton_ = new QPushButton(resultView_->viewport());
+    const QIcon copyIcon = QIcon::fromTheme("edit-copy");
+    if (copyIcon.isNull()) copyButton_->setText(tr("Copy"));   // no icon theme: fall back to a label
+    else copyButton_->setIcon(copyIcon);
+    copyButton_->setToolTip(tr("Copy the selected text (Ctrl+C)"));
+    copyButton_->hide();
+    connect(copyButton_, &QPushButton::clicked, this, [this] {
+        ocrItem_->copySelection();
+        status_->setText(tr("%n word(s) copied", nullptr, ocrItem_->selectedCount()));
+    });
+    connect(ocrItem_, &OcrTextItem::selectionChanged, this, &MainWindow::placeCopyButton);
 
     sizeBox_ = new QComboBox;
     sizeBox_->addItems({tr("Auto"), "A4", "A5", "A3", "Letter", "Legal", "ID card", "DL", tr("Custom")});
@@ -192,6 +212,16 @@ void MainWindow::buildUi() {
     sizeLayout->addWidget(widthSpin_);
     sizeLayout->addWidget(heightLabel_);
     sizeLayout->addStretch(1);
+    ocrLangButton_ = new QToolButton;
+    ocrLangButton_->setPopupMode(QToolButton::InstantPopup);
+    ocrLangMenu_ = new QMenu(this);
+    ocrLangButton_->setMenu(ocrLangMenu_);
+    buildLanguageMenu();
+    sizeLayout->addWidget(ocrLangButton_);
+    ocrButton_ = new QPushButton(tr("OCR"));
+    ocrButton_->setToolTip(tr("Recognise the text of this page and show it as selectable boxes"));
+    connect(ocrButton_, &QPushButton::clicked, this, &MainWindow::runOcr);
+    sizeLayout->addWidget(ocrButton_);
     auto* resultBox = new QWidget;
     auto* resultLayout = new QVBoxLayout(resultBox);
     resultLayout->setContentsMargins(0, 0, 0, 0);
@@ -221,6 +251,7 @@ void MainWindow::buildUi() {
     editorBusy_ = new BusyOverlay(editor_);
     resultBusy_ = new BusyOverlay(resultView_);
     resultBusy_->setText(tr("Processing…"));
+    updateOcrRow();
 }
 
 void MainWindow::setReceiving(bool on) {
@@ -266,6 +297,7 @@ void MainWindow::setBusy(int delta) {
     editorBusy_->setVisible(busy);
     resultBusy_->setVisible(busy);
     setAcceptDrops(!busy);
+    updateOcrRow();
 }
 
 void MainWindow::openFiles() {
@@ -302,7 +334,14 @@ void MainWindow::addFiles(const QStringList& paths) {
 
 void MainWindow::currentChanged(int row) {
     current_ = row;
-    if (row < 0) { editor_->setImage({}); resultItem_->setPixmap({}); heightLabel_->clear(); return; }
+    if (row < 0) {
+        editor_->setImage({});
+        resultItem_->setPixmap({});
+        ocrItem_->clear();
+        heightLabel_->clear();
+        updateOcrRow();
+        return;
+    }
     const Page& p = model_->page(row);
     editor_->setImage(matToQImage(p.source));
     editor_->setQuad(p.quad);
@@ -324,6 +363,153 @@ void MainWindow::showResult(int row) {
     resultItem_->setPixmap(QPixmap::fromImage(matToQImage(p.result)));
     resultView_->scene()->setSceneRect(resultItem_->boundingRect());
     resultView_->fitInView(resultView_->scene()->sceneRect(), Qt::KeepAspectRatio);
+    ocrItem_->setWords(p.ocr.words);
+    updateOcrRow();
+}
+
+// The Copy button follows the end of the sweep, just clear of the pointer, like
+// the one a phone pops up.
+void MainWindow::placeCopyButton(const QPointF& sceneEnd, bool hasSelection) {
+    if (!hasSelection) { copyButton_->hide(); return; }
+    const QPoint end = resultView_->mapFromScene(sceneEnd);
+    const QSize s = copyButton_->sizeHint();
+    const int w = resultView_->viewport()->width(), h = resultView_->viewport()->height();
+    int x = end.x() + 8, y = end.y() + 8;
+    if (x + s.width() > w) x = end.x() - s.width() - 8;    // flip to the other side
+    if (y + s.height() > h) y = end.y() - s.height() - 8;
+    x = std::clamp(x, 0, std::max(0, w - s.width()));
+    y = std::clamp(y, 0, std::max(0, h - s.height()));
+    copyButton_->setGeometry(QRect(QPoint(x, y), s));
+    copyButton_->show();
+    copyButton_->raise();
+}
+
+// Tesseract names its files by ISO 639-2 code; show what those codes mean, and
+// fall back to the bare code for the ones Qt does not know (chi_sim, equ, ...).
+static QString languageName(const QString& code) {
+    QLocale::Language lang = QLocale::AnyLanguage;
+    for (auto type : {QLocale::ISO639Part2T, QLocale::ISO639Part2B, QLocale::ISO639Part3})
+        if ((lang = QLocale::codeToLanguage(code, type)) != QLocale::AnyLanguage) break;
+    return lang == QLocale::AnyLanguage ? code
+                                        : QString("%1 (%2)").arg(QLocale::languageToString(lang), code);
+}
+
+// One tickable entry per installed traineddata: Tesseract happily takes several
+// at once, and a scan is often mixed (a Greek bill still prints Latin codes).
+void MainWindow::buildLanguageMenu() {
+    // Rebuilt whenever a language is added or removed, so start from what is
+    // ticked now and fall back to the saved setting the first time round.
+    QStringList chosen = ocrOrder_.isEmpty()
+                             ? QString::fromStdString(opt_.ocrLanguage).split('+', Qt::SkipEmptyParts)
+                             : ocrOrder_;
+    ocrLangMenu_->clear();
+    ocrOrder_.clear();
+    for (const std::string& code : Ocr::availableLanguages()) {
+        if (code == "osd") continue;   // orientation data, not a recognition language
+        const QString c = QString::fromStdString(code);
+        QAction* a = ocrLangMenu_->addAction(languageName(c));
+        a->setCheckable(true);
+        a->setData(c);
+    }
+    // Whatever was ticked may have just been removed from the disk; recognising
+    // in nothing is not a state, so fall back to what the system suggests.
+    chosen.removeIf([this](const QString& c) { return !installedLanguage(c); });
+    if (chosen.isEmpty())
+        chosen = QString::fromStdString(Ocr::defaultLanguage()).split('+', Qt::SkipEmptyParts);
+    // The menu is alphabetical, the spec is not: Tesseract treats the first
+    // language as the primary one, so keep the order the user ticked them in
+    // (and the saved order when it comes from the settings).
+    for (const QString& c : chosen)
+        if (installedLanguage(c)) ocrOrder_ << c;
+    for (QAction* a : ocrLangMenu_->actions())
+        a->setChecked(ocrOrder_.contains(a->data().toString()));
+
+    // Connect only now: ticking the initial state above must not look like a
+    // choice, or the first run would save a setting the user never made and the
+    // language would stop following the system from then on.
+    for (QAction* a : ocrLangMenu_->actions()) {
+        connect(a, &QAction::toggled, this, [this, a](bool on) {
+            const QString code = a->data().toString();
+            if (on) {
+                if (!ocrOrder_.contains(code)) ocrOrder_ << code;
+            } else if (ocrOrder_.size() < 2) {
+                a->setChecked(true);   // keep at least one; re-enters here with on == true
+                return;
+            } else {
+                ocrOrder_.removeAll(code);
+            }
+            if (ocrLanguage() == opt_.ocrLanguage) return;   // the revert above changed nothing
+            opt_.ocrLanguage = ocrLanguage();
+            QSettings(settingsPath(), QSettings::IniFormat)
+                .setValue("ocr/language", QString::fromStdString(opt_.ocrLanguage));
+            updateOcrRow();
+            if (current_ >= 0 && model_->page(current_).ocrDone) runOcr();   // redo what is on screen
+        });
+    }
+    ocrLangMenu_->addSeparator();
+    connect(ocrLangMenu_->addAction(tr("Manage languages…")), &QAction::triggered, this, [this] {
+        LanguageDialog(this).exec();
+        // Queued, because rebuilding deletes the very action this runs from.
+        QMetaObject::invokeMethod(
+            this, [this] { buildLanguageMenu(); updateOcrRow(); }, Qt::QueuedConnection);
+    });
+    ocrLangButton_->setVisible(true);
+}
+
+bool MainWindow::installedLanguage(const QString& code) const {
+    for (const QAction* a : ocrLangMenu_->actions())
+        if (a->data().toString() == code) return true;
+    return false;
+}
+
+std::string MainWindow::ocrLanguage() const {
+    return ocrOrder_.join('+').toStdString();
+}
+
+void MainWindow::updateOcrRow() {
+    const bool ready = current_ >= 0 && !model_->page(current_).result.empty();
+    ocrButton_->setEnabled(ready && !ocrRunning_ && activeJobs_ == 0);
+    ocrButton_->setText(ocrRunning_ ? tr("Reading…") : tr("OCR"));
+
+    QStringList picked;
+    for (const QString& code : ocrOrder_) picked << languageName(code);
+    ocrLangButton_->setText(picked.isEmpty() ? tr("Language")
+                            : picked.size() == 1 ? picked.first()
+                                                 : tr("%1 +%2").arg(picked.first()).arg(picked.size() - 1));
+    ocrLangButton_->setToolTip(tr("Recognise the text in: %1").arg(picked.join(", ")));
+}
+
+// Optional extra Tesseract pass on the page in view. It reads the un-enhanced
+// rectified image, so the result survives later mode/strength changes -- but any
+// reprocessing drops it anyway, because the quad or the rotation may have moved.
+void MainWindow::runOcr() {
+    if (current_ < 0 || ocrRunning_) return;
+    Page& p = model_->page(current_);
+    if (p.rectified.empty()) return;
+    const int row = current_;
+    const quint64 gen = gen_[size_t(row)];
+    const cv::Mat src = p.rectified;
+    const std::string lang = ocrLanguage().empty() ? opt_.ocrLanguage : ocrLanguage();
+
+    ocrRunning_ = true;
+    updateOcrRow();
+    auto* watcher = new QFutureWatcher<Ocr::Result>(this);
+    connect(watcher, &QFutureWatcher<Ocr::Result>::finished, this, [this, watcher, row, gen] {
+        ocrRunning_ = false;
+        if (row < model_->rowCount() && row < int(gen_.size()) && gen_[size_t(row)] == gen) {
+            Page& p = model_->page(row);
+            p.ocr = watcher->result();
+            p.ocrDone = true;
+            if (row == current_) {
+                ocrItem_->setWords(p.ocr.words);
+                status_->setText(p.ocr.words.empty() ? tr("No text found")
+                                                     : tr("%n word(s) recognised", nullptr, int(p.ocr.words.size())));
+            }
+        }
+        updateOcrRow();
+        watcher->deleteLater();
+    });
+    watcher->setFuture(QtConcurrent::run([src, lang] { return Ocr::run(src, lang); }));
 }
 
 void MainWindow::reprocess(int row) {

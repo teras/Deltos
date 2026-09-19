@@ -20,6 +20,7 @@ struct ScanInput {
 
 struct Scan {
     cv::Mat image;                 // final result, rotated
+    cv::Mat rectified;             // same page un-enhanced, same size and rotation: the input for OCR
     Quad quad;
     std::string detection;         // method of the automatic detection, empty if the quad was given
     double confidence = 0;

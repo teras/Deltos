@@ -1,4 +1,6 @@
 #include "Orientation.h"
+#include "Ocr.h"
+#include "Tessdata.h"
 #include <opencv2/imgproc.hpp>
 #include <tesseract/baseapi.h>
 #include <iostream>
@@ -22,7 +24,8 @@ Result detect(const cv::Mat& img, const std::string& tessdataDir) {
     if (scale < 1.0) cv::resize(gray, gray, cv::Size(), scale, scale, cv::INTER_AREA);
     gray = gray.clone(); // ensure continuous
 
-    const char* dataDir = tessdataDir.empty() ? nullptr : tessdataDir.c_str();
+    const std::string dir = tessdataDir.empty() ? Tessdata::dataDir() : tessdataDir;
+    const char* dataDir = dir.empty() ? nullptr : dir.c_str();
 
     // 1) OSD: fast and reliable on pages with plenty of text.
     {
@@ -76,10 +79,15 @@ Result detect(const cv::Mat& img, const std::string& tessdataDir) {
             tasks.push_back({rot, img});
         }
 
+    // Resolved once: every instance below wants it, and working it out probes the
+    // installed traineddata. Which language hardly matters here -- the score only
+    // counts clean, confident words -- but it must not be someone's favourite two.
+    const std::string language = Ocr::defaultLanguage(dir);
+
     cv::parallel_for_(cv::Range(0, int(tasks.size())), [&](const cv::Range& range) {
         for (int i = range.start; i < range.end; ++i) {
             tesseract::TessBaseAPI api;
-            if (api.Init(dataDir, "ell+eng", tesseract::OEM_LSTM_ONLY) != 0) continue;
+            if (api.Init(dataDir, language.c_str(), tesseract::OEM_LSTM_ONLY) != 0) continue;
             api.SetPageSegMode(tesseract::PSM_SPARSE_TEXT);
             const cv::Mat& img = tasks[size_t(i)].img;
             api.SetImage(img.data, img.cols, img.rows, 1, int(img.step));
