@@ -1,3 +1,4 @@
 build/
 tests/images/private/
 .state.md
+.flatpak-builder/

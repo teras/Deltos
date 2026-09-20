@@ -1,141 +1,139 @@
+<img src="icons/onl.ycode.Deltos.svg" width="110" align="right" alt="">
+
 # Deltos
 
-<img src="icons/deltos.svg" width="96" align="right" alt="">
+**Photograph a document. Get a scan.**
 
-Desktop document scanner: take a photo of a document at any angle, get a flat,
-upright, correctly-proportioned page and export it as a PDF, PNG or JPG with
-real physical dimensions. Works as a GUI and from the command line.
+No scanner, no flatbed, no app on your phone. Take a picture of a page at
+whatever angle you happen to be holding the camera, and Deltos gives you back a
+flat, upright page — in its real size, ready to file or print.
 
-## Input and output
+![An A4 bill photographed at an angle, with a bank card lying beside it for scale, rectified and measured on the right](docs/screenshot-en.png)
 
-**Input**: any image format the installed Qt image plugins can read — JPEG, PNG,
-TIFF, WebP, BMP, and HEIC/HEIF when the kimageformats plugin
-is present. EXIF orientation is applied on load, and EXIF metadata is used by
-the pipeline (see below). Open files with the toolbar button, on the command
-line, by dragging them onto the window, or straight from a phone (see below).
+## Why it is not just a crop
 
-**Output**, from the *Export* dropdown:
+Anything can crop a photo into a rectangle. The hard part is that a photograph
+of a page is a *projection* of it: the corners are not square, the sides are not
+parallel, and a crop leaves you with a trapezium stretched into a rectangle —
+the wrong shape.
 
-- **PDF, all pages** — one page per document, each page sized to its own
-  physical dimensions (e.g. an A4 sheet becomes a 210 × 297 mm page, an ID card
-  an 85.6 × 54 mm page). Black & white pages are stored as lossless 1-bit
-  images; the rest are JPEG-compressed.
-- **PDF, current page** — the same for the selected document only.
-- **PNG / JPG, current page** — the processed image, with the physical size
-  embedded as DPI so other tools show it at scale. Black & white PNGs are 1-bit.
+Deltos works the geometry back. From the four corners and the focal length the
+camera recorded, it recovers the page's **true proportions**, and then its
+**real physical size** — so an A4 sheet comes out as 210 × 297 mm, and an ID
+card as 85.6 × 54 mm. Export to PDF and the page is that size. Export to PNG and
+the density is embedded, so every other program shows it at scale.
 
-The output keeps the source pixel scale of the document's longest edge, so a
-12 MP photo of an A4 sheet gives roughly a 300 dpi scan.
+And it tells you where that number came from. *Verified* means it was measured
+against a card you left beside the document. *Measured* means the camera's own
+depth sensor. *Assumed* means it matched a standard paper shape. The label never
+claims more than it knows.
 
-## From a phone
+## When you want the size to be exact
 
-Photos must arrive with their metadata intact: the focal length gives the true
-page shape and, on iPhones with LiDAR, the camera distance gives the physical
-size without a reference card. Messaging apps (WhatsApp, Messenger, mail)
-strip that and shrink the image. Deltos therefore receives photos directly over
-the local network: turn on *Open → Receive from phone*. Two ways:
+Most of the time there is nothing to do: a standard page is recognised by its
+shape, and an iPhone's depth sensor manages on its own.
 
-- **Browser**: scan the QR code with the phone's camera, or type the address
-  (e.g. `http://192.168.1.5:53317/`) in its browser, and pick the photos.
-  Nothing to install. iOS uploads photos as full-resolution JPEG with the
-  metadata intact (WebKit converts HEIC on upload); that loses nothing Deltos
-  needs.
-- **LocalSend app**: with the free, open-source [LocalSend](https://localsend.org)
-  app (iOS and Android), share the photos and pick "Deltos (hostname)" from the
-  device list. This is the only way to get the original HEIC untouched.
+When the millimetres matter — a document of no standard size, a drawing to print
+at scale — put a card in the photograph, as on the desk above. Every bank card,
+licence and hotel key is the same ID-1 format, **85.60 × 53.98 mm** by
+international standard, so one in the frame is a ruler you already carry: Deltos
+finds it and measures the page against it, **to about one percent**, whatever
+the page is.
 
-Both use port 53317 (TCP; plus UDP multicast for LocalSend discovery). If the
-phone cannot connect, open that port in the computer's firewall. If the port
-is taken (the LocalSend desktop app is running) Deltos takes the next free one
-and shows it, so both can run together as long as that port is open too. The
-receiver is plain HTTP on the local network, accepts image files only, and
-listens only while *Receive from phone* is on.
+Lay it flat on the same surface, beside the page and not under it. Angle and
+alignment do not matter. The size then reads **Verified** rather than *Measured*
+or *Assumed*, and the tooltip says what it was measured against.
 
-## What it does
+## What you get
 
-- **Detection**: the DocAligner ONNX model plus classic edge detection, with a
-  coarse-to-fine pass for documents that are small in the frame. Corners
-  can be dragged by hand in the editor; *Detect again* reruns detection.
-- **Geometry**: the true aspect ratio of the page is recovered from the four
-  corners and the camera focal length (EXIF), so the output is not just
-  "rectangular" but the right shape. Without EXIF a 28 mm-equivalent lens is
-  assumed.
-- **Physical size**, in order of preference: user override → reference credit
-  card lying beside the document (~1 %) → camera distance from iPhone LiDAR
-  metadata (~15 %) → recognised standard shape (A-series, Letter, Legal, ID-1,
-  DL) → unknown. The size and how it was obtained are shown under the result;
-  the *Size* box lets you force a standard (A4, A5, A3, Letter, Legal, ID card,
-  DL) or type a custom width.
-- **Reference card**: put any ID-1 card (credit card, ID, driving licence) next
-  to the document and the scale is measured from it. If the document itself is
-  card-sized, *Swap document ↔ reference* picks the other object.
-- **Orientation**: Tesseract OSD, with an OCR-per-rotation fallback for sparse
-  text such as cards. *Rotate 90°* fixes it by hand.
-- **Enhancement**: *Color* (shadow lift and paper white balance — dark objects
-  stay dark), *Grayscale* and *Black & white*, with a strength slider (in B&W
-  mode it sets how aggressively faint ink is dropped).
+- **A page that is actually flat and upright.** Perspective undone, lighting
+  evened out, rotation corrected — even on a card with three words on it.
+- **Real dimensions**, from a card left in the frame, from an iPhone's depth
+  sensor, or from the standard shape the page matches.
+- **Colour, grayscale or black and white**, with one slider. Colour mode lifts
+  shadows and whitens paper without flattening a photograph printed on it.
+- **The text, selectable.** Press *OCR* and the words appear over the page.
+  Sweep across them with the mouse and copy. Recognition runs in as many
+  languages as you like at once, and any of 125 more is one click away.
+- **Photos straight from the phone**, full resolution, metadata intact.
+- **The same thing from the command line**, for a folder full of photos.
 
-## Dependencies
+![Text recognised on a Greek page, ready to select and copy](docs/screenshot-el.png)
 
-Qt 6 (Widgets, Gui, Concurrent, Network), OpenCV 4 or 5 (core, imgproc, imgcodecs, dnn;
-`geometry` on OpenCV 5), Tesseract 5 with `osd`, `ell`, `eng` traineddata,
-libheif (optional, for EXIF in HEIC). HEIC decoding itself comes from the Qt
-image-format plugins (kimageformats).
+## Get it
 
-The detection model (`models/fastvit_sa24_h_e_bifpn_256_fp32.onnx`, 83 MB,
-Apache 2.0, from [DocAligner](https://github.com/DocsaidLab/DocAligner)) is part
-of the repository and of every build. At run time it is looked up, in this
-order, in the first place it exists:
+Every release carries a package for each system, plus two that need no
+installation at all:
 
-1. `models/` next to the executable (the build tree)
-2. `../models` relative to the executable
-3. `../Resources/models` (inside `Deltos.app`)
-4. `../share/deltos/models` (Linux install prefix)
-5. the per-user application data directory: `~/.local/share/deltos/models`
-   on Linux, `~/Library/Application Support/deltos/models` on macOS,
-   `%APPDATA%\deltos\models` on Windows
-6. `models/` in the current directory
+| | |
+|---|---|
+| **AppImage** | one file, make it executable, run it |
+| **Flatpak** | `flatpak install deltos-*.flatpak` |
+| **Arch, Manjaro** | `pacman -U deltos-*.pkg.tar.zst` |
+| **Fedora** | `dnf install deltos-*.rpm` |
+| **Debian, Ubuntu** | `apt install ./deltos-*.deb` |
+| **Windows** | unpack the zip and run `deltos.exe`; there is an installer too. `deltos-cli.exe` beside it is the one for a command prompt |
 
-A different DocAligner model with the same interface can be given with
-`--model FILE`; without any model detection falls back to edges only.
+**[Download the latest release →](https://github.com/teras/Deltos/releases)**
 
-## Build
+Nothing is code-signed, so Windows will say so the first time: *More info* →
+*Run anyway*. The zip is the gentler of the two — it asks once, where the
+installer also wants administrator rights from a publisher it cannot name.
 
-    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-    cmake --build build -j
-    ./build/deltos [images...]
+What every release does carry is a `SHA256SUMS` file and a build provenance
+attestation, so a download can be checked against what the public build
+actually produced:
 
-On Linux `cmake --install build` installs the binary, the model, the `.desktop`
-file and the icons. On macOS the build produces `Deltos.app` with the model
-inside.
+    gh attestation verify Deltos-1.0-windows-x86_64.zip -R teras/Deltos
 
-## Command line
+Packages need Debian 13, Ubuntu 25.10, Fedora 40, or Arch and Manjaro, or
+anything newer. The AppImage and the Flatpak bring their own libraries and run
+on older systems too.
 
-    deltos [options] image...
+## Use it
 
-Without `--no-gui` the images open in the window; every option below also
-applies there (as the initial setting of each page, the detector, or the
-export), except `--out`, which is ignored with a warning.
+Open a photo — from the toolbar, by dragging it onto the window, or from your
+phone. The detected page appears on the left with its corners marked; drag any
+of them if the detector got it wrong. The result is on the right, and the size
+row above it says how big the page is and how that was worked out. Then
+*Export*.
 
-      --no-gui          run headless
-      --out FILE        write the result: .pdf takes any number of images (one page each),
-                        .png/.jpg take exactly one; without --out only the analysis is printed
-      --mode MODE       color (default), gray or bw
-      --strength 0-100  enhancement strength (default 50)
-      --model FILE      DocAligner ONNX model to use (default: the shipped one)
-      --no-model        edge detection only
-      --focal PX        camera focal length in pixels (default: from EXIF)
-      --self-focal      estimate the focal length from the image instead of EXIF
-      --no-snap         do not snap the aspect ratio to a standard paper size
-      --dpi N           page density for images of unknown physical size (default 300)
+From a terminal, the same pipeline without the window:
 
-Headless, for every image it prints the detection method and confidence, the
-corner coordinates, the aspect ratio and matched standard, the physical size and
-how it was obtained, and the text orientation. `DELTOS_DEBUG=FILE` additionally
-saves the source with the detected quad drawn on it (`-1`, `-2`, ... is added
-before the extension when there are several images).
+    deltos --no-gui --out scan.pdf photo1.jpg photo2.jpg
+
+`man deltos` has the rest.
+
+### From your phone
+
+Messaging apps shrink photos and strip their metadata — and the metadata is
+where the focal length and the camera's depth reading live, which is most of how
+Deltos knows the size of things. So it takes the photos directly, over your own
+network: turn on *Open → Receive from phone*, then either scan the QR code and
+pick the photos in your phone's browser, or send them with the free
+[LocalSend](https://localsend.org) app. Nothing leaves the local network, and
+nothing needs installing on the phone for the browser route.
+
+## Reading the text
+
+The *OCR* button reads the page in view and draws a box around every word.
+Drag across an area and those words are copied — a geometric selection, so
+dragging over a column takes that column, not everything printed between its
+first and last word.
+
+Languages sit in the menu beside the button; tick as many as apply, and the
+order you tick them in is the order Tesseract gets them, which decides the
+primary one. *Manage languages…* downloads any of the 125 that upstream
+publishes, straight into your own data directory. What your system already
+provides is listed there too, and used first.
 
 ## License
 
-GPL-3.0-only, see `LICENSE`. The detection model is Apache 2.0 (`models/LICENSE`)
-and the bundled QR code generator (`third_party/qrcodegen`, Project Nayuki) is MIT.
+GPL-3.0-only, see `LICENSE`. The detection model is Apache 2.0
+(`models/LICENSE`), from [DocAligner](https://github.com/DocsaidLab/DocAligner);
+the bundled QR code generator (`third_party/qrcodegen`, Project Nayuki) is MIT.
+
+---
+
+Building it, how the pipeline works, and how the packages are made:
+[DEVELOPING.md](DEVELOPING.md).

@@ -4,6 +4,10 @@
 #include <QIcon>
 #include <QTimer>
 #include <cstring>
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <cstdio>
+#endif
 
 int main(int argc, char** argv) {
     // findModel() needs an application object for applicationDirPath(); a GUI one is
@@ -14,6 +18,19 @@ int main(int argc, char** argv) {
     bool noGui = false;
     for (int i = 1; i < argc; ++i) noGui |= std::strcmp(argv[i], "--no-gui") == 0;
     if (noGui) {
+#ifdef Q_OS_WIN
+        // deltos.exe is a GUI application, so that launching it never flashes a
+        // console -- which also means it starts with none. Borrow the one that
+        // started it, but only when nothing has already been redirected into a
+        // file or a pipe, which reopening CONOUT$ would throw away. (For actual
+        // command-line use there is deltos-cli.exe, which needs none of this.)
+        const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+        const bool redirected = out && out != INVALID_HANDLE_VALUE && GetFileType(out) != FILE_TYPE_UNKNOWN;
+        if (!redirected && AttachConsole(ATTACH_PARENT_PROCESS)) {
+            freopen("CONOUT$", "w", stdout);
+            freopen("CONOUT$", "w", stderr);
+        }
+#endif
         qputenv("QT_QPA_PLATFORM", "offscreen");
         QGuiApplication app(argc, argv);
         const auto opt = deltos::parseOptions(argc, argv);
@@ -23,7 +40,7 @@ int main(int argc, char** argv) {
     QApplication app(argc, argv);
     const auto opt = deltos::parseOptions(argc, argv);
     if (!opt) return 2;
-    QGuiApplication::setDesktopFileName("deltos"); // Wayland/GNOME match the window to the .desktop icon by this name
+    QGuiApplication::setDesktopFileName("onl.ycode.Deltos"); // Wayland/GNOME match the window to the .desktop file by this name
     QIcon icon;
     for (int s : {16, 32, 48, 64, 128, 256, 512}) icon.addFile(QStringLiteral(":/icons/deltos-%1.png").arg(s));
     QApplication::setWindowIcon(icon);

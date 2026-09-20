@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!-- Fictitious bill for testing document capture; print it and photograph it.
+     weasyprint sample-el.html sample-el.pdf -->
+<meta charset="utf-8">
+<title>Δείγμα σελίδας — Deltos</title>
+<link rel="stylesheet" href="sample.css">
+
+<div class="head">
+  <div>
+    <h1>ΛΟΓΑΡΙΑΣΜΟΣ ΥΔΡΕΥΣΗΣ</h1>
+    <p class="sub">Περίοδος κατανάλωσης: 01/04/2026 – 30/06/2026</p>
+  </div>
+  <div class="issuer">
+    ΔΕΙΓΜΑ Α.Ε.<br>
+    Λεωφόρος Παραδείγματος 128, 154 51 Αθήνα<br>
+    https://example.org/logariasmoi &nbsp; ΑΦΜ 000000000
+  </div>
+</div>
+
+<div class="grid">
+  <div class="box">
+    <h2>ΚΩΔΙΚΟΣ ΠΛΗΡΩΜΗΣ</h2>
+    <div class="big">5099 2740 1836 0042</div>
+  </div>
+  <div class="box">
+    <h2>ΠΛΗΡΩΤΕΟ ΠΟΣΟ</h2>
+    <div class="big">147,86 €</div>
+  </div>
+  <div class="box">
+    <h2>ΛΗΞΗ ΠΡΟΘΕΣΜΙΑΣ</h2>
+    <div class="big">15/07/2026</div>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>ΠΕΡΙΓΡΑΦΗ ΧΡΕΩΣΗΣ</th><th class="n">ΜΟΝΑΔΕΣ</th><th class="n">ΤΙΜΗ</th><th class="n">ΠΟΣΟ</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Πάγιο τέλος</td><td class="n">1</td><td class="n">8,40</td><td class="n">8,40</td></tr>
+    <tr><td>Κατανάλωση, πρώτη κλίμακα</td><td class="n">30 m³</td><td class="n">0,6900</td><td class="n">20,70</td></tr>
+    <tr><td>Κατανάλωση, δεύτερη κλίμακα</td><td class="n">42 m³</td><td class="n">1,2400</td><td class="n">52,08</td></tr>
+    <tr><td>Τέλος αποχέτευσης</td><td class="n">72 m³</td><td class="n">0,5800</td><td class="n">41,76</td></tr>
+    <tr><td>Φ.Π.Α. 13 %</td><td class="n"></td><td class="n"></td><td class="n">16,18</td></tr>
+    <tr><td>Στρογγυλοποίηση προηγούμενου λογαριασμού</td><td class="n"></td><td class="n"></td><td class="n">8,74</td></tr>
+  </tbody>
+  <tfoot>
+    <tr><td colspan="3">ΣΥΝΟΛΟ ΠΛΗΡΩΜΗΣ</td><td class="n">147,86 €</td></tr>
+  </tfoot>
+</table>
+
+<h3 style="font-size:10pt; margin:5mm 0 0 0;">ΙΣΤΟΡΙΚΟ ΚΑΤΑΝΑΛΩΣΗΣ</h3>
+<table>
+  <thead>
+    <tr><th>Περίοδος</th><th>Ένδειξη</th><th class="n">Κατανάλωση</th><th class="n">Ημέρες</th><th class="n">Μέση ημερήσια</th><th class="n">Ποσό</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>01/07/2025 – 30/09/2025</td><td>Πραγματική</td><td class="n">88 m³</td><td class="n">92</td><td class="n">0,957 m³</td><td class="n">182,40</td></tr>
+    <tr><td>01/10/2025 – 31/12/2025</td><td>Πραγματική</td><td class="n">61 m³</td><td class="n">92</td><td class="n">0,663 m³</td><td class="n">124,15</td></tr>
+    <tr><td>01/01/2026 – 31/03/2026</td><td>Εκτιμώμενη*</td><td class="n">70 m³</td><td class="n">90</td><td class="n">0,778 m³</td><td class="n">139,60</td></tr>
+    <tr><td>01/04/2026 – 30/06/2026</td><td>Πραγματική</td><td class="n">72 m³</td><td class="n">91</td><td class="n">0,791 m³</td><td class="n">147,86</td></tr>
+  </tbody>
+</table>
+
+<div class="grid" style="margin-top:4mm;">
+  <div class="box">
+    <h2>ΤΡΟΠΟΙ ΠΛΗΡΩΜΗΣ</h2>
+    <div style="font-size:8.5pt;">
+      Τράπεζα με τον κωδικό πληρωμής &bull; ηλεκτρονική τραπεζική &bull; ΕΛΤΑ &bull; πάγια εντολή<br>
+      IBAN GR96 0810 0010 0000 0123 4567 890 &nbsp; BIC EXAMGRAA<br>
+      Τηλεφωνικό κέντρο 210 0000000, Δευτέρα – Παρασκευή 08:00 – 16:00
+    </div>
+  </div>
+  <div class="box">
+    <h2>ΜΕΤΡΗΤΗΣ</h2>
+    <div style="font-size:8.5pt;">
+      Σειριακός αριθμός 04-118-27350<br>
+      Προηγούμενη ένδειξη 1 284 m³ &nbsp; Τρέχουσα ένδειξη 1 356 m³<br>
+      Ημερομηνία μέτρησης 28/06/2026
+    </div>
+  </div>
+</div>
+
+<div class="mrz">*509927401836004200014786*&nbsp;&nbsp;20260715&nbsp;&nbsp;EUR147,86</div>
+
+<div class="ruler">
+  <div class="bar"></div>
+  <span>100 mm — τυπωμένη κλίμακα, για έλεγχο του μετρημένου μεγέθους</span>
+</div>
+
+<div class="fine">
+  Η εξόφληση του παρόντος δεν αποτελεί απόδειξη εξόφλησης προηγούμενων
+  λογαριασμών. Σε περίπτωση διακοπής της υδροδότησης λόγω ληξιπρόθεσμης οφειλής,
+  η επανασύνδεση πραγματοποιείται εντός δύο εργάσιμων ημερών από την εξόφληση.
+  Οι ενδείξεις που δεν βασίζονται σε πραγματική μέτρηση σημειώνονται με αστερίσκο
+  και εκκαθαρίζονται στον επόμενο λογαριασμό. Η σελίδα αυτή είναι πλαστό δείγμα
+  για δοκιμές· κάθε όνομα, αριθμός και ποσό πάνω της είναι επινοημένο και δεν
+  αφορά κανέναν. Τα ψιλά γράμματα υπάρχουν επίτηδες: είναι το πρώτο πράγμα που
+  χάνει μια σάρωση όταν η εικόνα σμικρυνθεί υπερβολικά.
+</div>
+
+<div class="foot">
+  <span>ΑΡΙΘΜΟΣ ΠΑΡΟΧΗΣ 12-3456789-01</span>
+  <span>ΣΕΛΙΔΑ 1 ΑΠΟ 1</span>
+  <span>Έκδοση 01/07/2026</span>
+</div>

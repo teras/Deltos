@@ -1,0 +1,120 @@
+# Self-contained build: nothing of the host is reachable from the sandbox, so
+# OpenCV, Leptonica and Tesseract are built here rather than taken from the
+# system as the distribution packages do, and English plus the orientation data
+# travel with the application. Everything else the user wants is downloaded at
+# run time into the data directory.
+id: onl.ycode.Deltos
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
+command: deltos
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Language downloads, and receiving photos from a phone over the local network.
+  - --share=network
+  # Files named on the command line never go through the portal, and the command
+  # line is the whole headless mode: flatpak run --command=deltos onl.ycode.Deltos
+  - --filesystem=home
+  # Tesseract resolves this by itself from its own prefix, but saying it plainly
+  # costs nothing and survives a runtime that moves things around.
+  - --env=TESSDATA_PREFIX=/app/share/tessdata
+
+cleanup:
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - /share/man
+  - '*.a'
+  - '*.la'
+
+modules:
+  - name: opencv
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_LIBDIR=lib
+      - -DBUILD_LIST=core,imgproc,dnn
+      - -DBUILD_PROTOBUF=ON
+      - -DWITH_PROTOBUF=ON
+      - -DBUILD_TESTS=OFF
+      - -DBUILD_PERF_TESTS=OFF
+      - -DBUILD_EXAMPLES=OFF
+      - -DBUILD_opencv_apps=OFF
+      - -DBUILD_DOCS=OFF
+      - -DBUILD_JAVA=OFF
+      - -DWITH_FFMPEG=OFF
+      - -DWITH_GTK=OFF
+      - -DWITH_QT=OFF
+      - -DWITH_OPENEXR=OFF
+      - -DWITH_GSTREAMER=OFF
+      - -DWITH_V4L=OFF
+      - -DOPENCV_GENERATE_PKGCONFIG=ON
+    sources:
+      - type: archive
+        url: https://github.com/opencv/opencv/archive/refs/tags/4.13.0.tar.gz
+        sha256: 1d40ca017ea51c533cf9fd5cbde5b5fe7ae248291ddf2af99d4c17cf8e13017d
+
+  - name: leptonica
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_LIBDIR=lib
+      - -DBUILD_SHARED_LIBS=ON
+      - -DBUILD_PROG=OFF
+      - -DSW_BUILD=OFF
+    sources:
+      - type: archive
+        url: https://github.com/DanBloomberg/leptonica/releases/download/1.87.0/leptonica-1.87.0.tar.gz
+        sha256: c73363397f96eb1295602bf44d708a994ad42046c791bf03ea0505d829bdb6a7
+
+  - name: tesseract
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_LIBDIR=lib
+      - -DBUILD_SHARED_LIBS=ON
+      - -DBUILD_TRAINING_TOOLS=OFF
+      - -DDISABLE_CURL=ON
+      - -DDISABLE_ARCHIVE=ON
+      - -DSW_BUILD=OFF
+    sources:
+      - type: archive
+        url: https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.5.1.tar.gz
+        sha256: a7a3f2a7420cb6a6a94d80c24163e183cf1d2f1bed2df3bbc397c81808a57237
+
+  # English and the orientation data, the baseline that must never be missing.
+  # They are the float models, which is the half the recogniser uses.
+
+  - name: tessdata
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 eng.traineddata /app/share/tessdata/eng.traineddata
+      - install -Dm644 osd.traineddata /app/share/tessdata/osd.traineddata
+    sources:
+      - type: file
+        url: https://github.com/tesseract-ocr/tessdata_best/raw/4.1.0/eng.traineddata
+        sha256: 8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba
+      - type: file
+        url: https://github.com/tesseract-ocr/tessdata_best/raw/4.1.0/osd.traineddata
+        sha256: 9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff
+
+  # Only the four modules the pipeline uses; dnn needs protobuf, which OpenCV
+  # builds itself rather than pulling in another module.
+
+  - name: deltos
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_LIBDIR=lib
+    sources:
+      - type: git
+        url: https://github.com/teras/Deltos.git
+        tag: v1.0

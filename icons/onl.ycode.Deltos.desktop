@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Deltos
+Comment=Turn photos of documents into flat, upright, correctly-sized scans
+Exec=deltos %F
+Icon=onl.ycode.Deltos
+Terminal=false
+Categories=Graphics;Office;Scanning;Qt;
+MimeType=image/jpeg;image/png;image/heic;image/heif;image/tiff;image/webp;
+StartupWMClass=deltos

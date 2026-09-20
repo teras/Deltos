@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<!-- Fictitious bill for testing document capture; print it and photograph it.
+     weasyprint sample-en.html sample-en.pdf -->
+<meta charset="utf-8">
+<title>Sample page — Deltos</title>
+<link rel="stylesheet" href="sample.css">
+
+<div class="head">
+  <div>
+    <h1>WATER AND SEWERAGE BILL</h1>
+    <p class="sub">Billing period: 1 April 2026 – 30 June 2026</p>
+  </div>
+  <div class="issuer">
+    EXAMPLE WATER LIMITED<br>
+    128 Example Road, Riverside, RS1 4TQ<br>
+    https://example.org/billing<br>VAT 000 0000 00
+  </div>
+</div>
+
+<div class="grid">
+  <div class="box">
+    <h2>PAYMENT REFERENCE</h2>
+    <div class="big">5099 2740 1836 0042</div>
+  </div>
+  <div class="box">
+    <h2>AMOUNT DUE</h2>
+    <div class="big">£147.86</div>
+  </div>
+  <div class="box">
+    <h2>PAYMENT DUE BY</h2>
+    <div class="big">15 July 2026</div>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>DESCRIPTION OF CHARGE</th><th class="n">UNITS</th><th class="n">RATE</th><th class="n">AMOUNT</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Standing charge</td><td class="n">1</td><td class="n">8.40</td><td class="n">8.40</td></tr>
+    <tr><td>Water supply, first block</td><td class="n">30 m³</td><td class="n">0.6900</td><td class="n">20.70</td></tr>
+    <tr><td>Water supply, second block</td><td class="n">42 m³</td><td class="n">1.2400</td><td class="n">52.08</td></tr>
+    <tr><td>Sewerage and drainage</td><td class="n">72 m³</td><td class="n">0.5800</td><td class="n">41.76</td></tr>
+    <tr><td>VAT at 13 %</td><td class="n"></td><td class="n"></td><td class="n">16.18</td></tr>
+    <tr><td>Balance brought forward</td><td class="n"></td><td class="n"></td><td class="n">8.74</td></tr>
+  </tbody>
+  <tfoot>
+    <tr><td colspan="3">TOTAL DUE</td><td class="n">£147.86</td></tr>
+  </tfoot>
+</table>
+
+<h3 style="font-size:10pt; margin:5mm 0 0 0;">CONSUMPTION HISTORY</h3>
+<table>
+  <thead>
+    <tr><th>Period</th><th>Reading</th><th class="n">Used</th><th class="n">Days</th><th class="n">Daily average</th><th class="n">Amount</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1 Jul 2025 – 30 Sep 2025</td><td>Actual</td><td class="n">88 m³</td><td class="n">92</td><td class="n">0.957 m³</td><td class="n">182.40</td></tr>
+    <tr><td>1 Oct 2025 – 31 Dec 2025</td><td>Actual</td><td class="n">61 m³</td><td class="n">92</td><td class="n">0.663 m³</td><td class="n">124.15</td></tr>
+    <tr><td>1 Jan 2026 – 31 Mar 2026</td><td>Estimated*</td><td class="n">70 m³</td><td class="n">90</td><td class="n">0.778 m³</td><td class="n">139.60</td></tr>
+    <tr><td>1 Apr 2026 – 30 Jun 2026</td><td>Actual</td><td class="n">72 m³</td><td class="n">91</td><td class="n">0.791 m³</td><td class="n">147.86</td></tr>
+  </tbody>
+</table>
+
+<div class="grid" style="margin-top:4mm;">
+  <div class="box">
+    <h2>HOW TO PAY</h2>
+    <div style="font-size:8.5pt;">
+      At your bank with the payment reference &bull; online banking &bull; by post &bull; direct debit<br>
+      IBAN GB29 EXAM 6016 1331 9268 19 &nbsp; BIC EXAMGB2L<br>
+      Customer service 0800 000 0000, Monday to Friday 08:00 – 16:00
+    </div>
+  </div>
+  <div class="box">
+    <h2>METER</h2>
+    <div style="font-size:8.5pt;">
+      Serial number 04-118-27350<br>
+      Previous reading 1 284 m³ &nbsp; Current reading 1 356 m³<br>
+      Read on 28 June 2026
+    </div>
+  </div>
+</div>
+
+<div class="mrz">*509927401836004200014786*&nbsp;&nbsp;20260715&nbsp;&nbsp;GBP147.86</div>
+
+<div class="ruler">
+  <div class="bar"></div>
+  <span>100 mm — a printed scale, to check the measured page size against reality</span>
+</div>
+
+<div class="fine">
+  Payment of this bill is not evidence that earlier bills have been settled.
+  Where a supply has been disconnected for arrears, reconnection takes place
+  within two working days of payment. Readings not based on an actual visit are
+  marked with an asterisk and are reconciled on the following bill. This page is
+  a fictitious sample produced for testing document capture; every name, number
+  and amount on it is invented and refers to nobody. Small print is deliberate:
+  it is the first thing a scan loses when the image is downscaled too far.
+</div>
+
+<div class="foot">
+  <span>ACCOUNT NUMBER 12-3456789-01</span>
+  <span>PAGE 1 OF 1</span>
+  <span>Issued 1 July 2026</span>
+</div>

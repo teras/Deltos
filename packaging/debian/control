@@ -1,0 +1,32 @@
+Source: deltos
+Section: graphics
+Priority: optional
+Maintainer: Panayotis Katsaloulis <panayotis@panayotis.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake,
+               pkgconf,
+               qt6-base-dev,
+               qt6-base-dev-tools,
+               libopencv-dev (>= 4.7),
+               libtesseract-dev,
+               libleptonica-dev,
+               libheif-dev
+Standards-Version: 4.7.0
+Homepage: https://github.com/teras/Deltos
+Rules-Requires-Root: no
+
+Package: deltos
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, tesseract-ocr, tesseract-ocr-eng, tesseract-ocr-osd
+Recommends: kimageformat-plugins, qt6-image-formats-plugins
+Suggests: tesseract-ocr-ell
+Description: Turn photos of documents into flat, upright, correctly-sized scans
+ Deltos is a desktop document scanner that needs no scanner. Photograph a
+ document at any angle and it returns a flat, upright page with its real
+ physical dimensions, ready to export as PDF, PNG or JPG.
+ .
+ The page is found with a neural detector and classic edge detection together,
+ its true proportions are recovered from the perspective using the focal length
+ recorded by the camera, and its physical size comes from a reference card
+ beside it, the camera's depth measurement, or the standard paper size it
+ matches. Its text can then be recognised, selected and copied.

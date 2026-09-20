@@ -1,0 +1,261 @@
+# Builds a native package on each supported distribution and attaches them all
+# to the GitHub release for the tag. Every job builds from the recipes under
+# packaging/, so what ships is what a packager would get by hand.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - run: pacman -Syu --noconfirm git cmake pkgconf qt6-base opencv tesseract tesseract-data-eng leptonica libheif
+      - uses: actions/checkout@v5
+      - name: Build package
+        run: |
+          set -eux
+          version="${GITHUB_REF_NAME#v}"
+          sed -i "s/^pkgver=.*/pkgver=$version/" packaging/arch/PKGBUILD
+          # makepkg refuses to run as root, and the container has no other user.
+          useradd -m builder
+          cp packaging/arch/PKGBUILD /home/builder/
+          chown -R builder:builder /home/builder
+          su builder -c 'cd ~ && makepkg --noconfirm --skipchecksums'   # dependencies are already installed above
+          mkdir -p out && cp /home/builder/*.pkg.tar.* out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch
+          path: out/*
+
+  fedora:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - run: dnf install -y git rpm-build rpmdevtools 'dnf-command(builddep)'
+      - uses: actions/checkout@v5
+      - name: Build package
+        run: |
+          set -eux
+          version="${GITHUB_REF_NAME#v}"
+          sed -i "s/^Version:.*/Version:        $version/" packaging/fedora/deltos.spec
+          rpmdev-setuptree
+          spectool -g -R packaging/fedora/deltos.spec
+          dnf builddep -y packaging/fedora/deltos.spec
+          rpmbuild -bb packaging/fedora/deltos.spec
+          mkdir -p out && find ~/rpmbuild/RPMS -name '*.rpm' -exec cp {} out/ \;
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fedora
+          path: out/*
+
+  deb:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: debian:trixie
+            name: debian-trixie
+          - image: ubuntu:26.04
+            name: ubuntu-26.04
+    container: ${{ matrix.image }}
+    steps:
+      - name: Install build tools
+        run: |
+          set -eux
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates build-essential debhelper devscripts \
+            cmake pkgconf qt6-base-dev qt6-base-dev-tools libopencv-dev libtesseract-dev libleptonica-dev libheif-dev
+      - uses: actions/checkout@v5
+      - name: Build package
+        run: |
+          set -eux
+          version="${GITHUB_REF_NAME#v}"
+          cp -r packaging/debian debian
+          sed -i "1s/^deltos (.*)/deltos ($version-1)/" debian/changelog
+          # 3.0 (quilt) wants an upstream tarball beside the tree; there are no
+          # patches, so it is just the tree itself.
+          tar --exclude=.git --exclude=debian --exclude-vcs -czf ../deltos_$version.orig.tar.gz .
+          dpkg-buildpackage -b -us -uc
+          # Debian and Ubuntu produce the same file name, so one would overwrite
+          # the other in the release; say which distribution each came from.
+          mkdir -p out
+          for f in ../*.deb ../*.ddeb; do
+            [ -e "$f" ] || continue
+            base=$(basename "$f"); cp "$f" "out/${base%%_*}_${version}-1_${{ matrix.name }}_amd64.${base##*.}"
+          done
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: out/*
+
+  # In a container of its own, privileged, because flatpak-builder has to
+  # sandbox each module it builds. The runner's own Ubuntu carries
+  # flatpak-builder 1.4.2 and a flatpak that hides the installed runtimes from a
+  # sandboxed builder; Fedora carries the same versions this was developed
+  # against, and the whole job was rehearsed in this exact container before it
+  # was written here.
+  flatpak:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+      options: --privileged
+    steps:
+      - run: dnf install -y --setopt=install_weak_deps=False git flatpak flatpak-builder elfutils
+      - uses: actions/checkout@v5
+      - name: Build the bundle
+        run: |
+          set -eux
+          version="${GITHUB_REF_NAME#v}"
+          # The manifest names the released tag; build the one being released.
+          sed -i "s|^        tag: .*|        tag: ${GITHUB_REF_NAME}|" packaging/flatpak/onl.ycode.Deltos.yml
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y flathub org.kde.Platform//6.11 org.kde.Sdk//6.11
+          flatpak-builder --force-clean --state-dir="$PWD/fp-state" --repo=repo \
+            build packaging/flatpak/onl.ycode.Deltos.yml
+          mkdir -p out
+          flatpak build-bundle repo "out/deltos-${version}.flatpak" onl.ycode.Deltos master
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: out/*
+
+  # Debian bookworm is the oldest base that still has the Qt 6.3 the code needs,
+  # and its glibc 2.36 is what decides where the result will run. OpenCV,
+  # Leptonica and Tesseract are built inside, since bookworm's OpenCV is 4.6 and
+  # cannot read the detection model.
+  appimage:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:bookworm
+    steps:
+      - run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
+      - uses: actions/checkout@v5
+      - name: Build the AppImage
+        run: |
+          set -eux
+          version="${GITHUB_REF_NAME#v}"
+          SRC="$PWD" OUT_DIR="$PWD/out" OUTPUT="Deltos-${version}-x86_64.AppImage" \
+            sh packaging/appimage/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: out/*
+
+  # MSYS2 has current builds of everything the application needs -- Qt 6.11,
+  # OpenCV 5, Tesseract, Leptonica, libheif -- so Windows is a matter of
+  # collecting the result rather than building its dependencies.
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-qt6-base
+            mingw-w64-x86_64-qt6-imageformats
+            mingw-w64-x86_64-qt6-svg
+            mingw-w64-x86_64-opencv
+            mingw-w64-x86_64-tesseract-ocr
+            mingw-w64-x86_64-leptonica
+            mingw-w64-x86_64-libheif
+            mingw-w64-x86_64-nsis
+            zip
+      - name: Build
+        run: |
+          set -eux
+          cmake -S . -B build -GNinja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+      - name: Assemble
+        run: |
+          set -eux
+          version="${GITHUB_REF_NAME#v}"
+          app=dist/Deltos
+          mkdir -p "$app"
+          cp build/deltos.exe build/deltos-cli.exe "$app/"
+          # Qt's own libraries, plugins and translations.
+          windeployqt6 --release --no-translations --no-system-d3d-compiler \
+              --no-opengl-sw "$app/deltos.exe"
+          # windeployqt ships only the platform plugin it thinks will be used.
+          # Headless mode asks for offscreen, and without it Qt aborts before
+          # main gets anywhere -- so --no-gui would never work on Windows.
+          cp /mingw64/share/qt6/plugins/platforms/qoffscreen.dll \
+             /mingw64/share/qt6/plugins/platforms/qminimal.dll "$app/platforms/"
+          # Everything else it links against, followed transitively: ldd lists
+          # the MinGW runtime and the OpenCV, Tesseract and Leptonica chain.
+          deps() { ldd "$1" | awk '/\/mingw64\/bin/ {print $3}'; }
+          for f in $(deps "$app/deltos.exe"); do cp -n "$f" "$app/" || true; done
+          for i in 1 2 3; do
+            for dll in "$app"/*.dll; do
+              for f in $(deps "$dll"); do cp -n "$f" "$app/" || true; done
+            done
+          done
+          cp -r models "$app/models"
+          # English and the orientation data sit beside the executable, where
+          # the application looks when there is no system Tesseract to ask.
+          mkdir -p "$app/tessdata"
+          for lang in eng osd; do
+            curl -sSL --retry 3 -o "$app/tessdata/$lang.traineddata" \
+              "https://github.com/tesseract-ocr/tessdata_best/raw/4.1.0/$lang.traineddata"
+          done
+          cp LICENSE README.md "$app/"
+          mkdir -p out
+          (cd dist && zip -qr "../out/Deltos-${version}-windows-x86_64.zip" Deltos)
+          makensis -DVERSION="$version" -DSOURCEDIR="$(cygpath -w "$PWD/$app")" \
+                   -DOUTFILE="$(cygpath -w "$PWD/dist/Deltos-${version}-setup.exe")" \
+                   packaging/windows/deltos.nsi
+          # The installer travels zipped as well: an unsigned executable served
+          # straight from a web page is what browsers refuse to download.
+          (cd dist && zip -qj "../out/Deltos-${version}-windows-setup.zip" "Deltos-${version}-setup.exe")
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: out/*
+
+  release:
+    needs: [arch, fedora, deb, flatpak, appimage, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      # None of this is signed with a code-signing certificate, which costs
+      # money we are not spending. What can be had for nothing is proof of where
+      # a file came from: each one is attested to this workflow and this commit,
+      # and anyone can check that with `gh attestation verify <file> -R teras/Deltos`.
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eux
+          # Published as a prerelease: it is listed and downloadable, but the
+          # project's front page keeps pointing at whatever was released before
+          # until someone says otherwise with: gh release edit <tag> --latest
+          (cd dist && sha256sum -- * > SHA256SUMS)
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease \
+            --title "Deltos ${GITHUB_REF_NAME#v}" --generate-notes dist/* \
+            || gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber dist/*

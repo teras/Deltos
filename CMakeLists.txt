@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(Deltos VERSION 0.1 LANGUAGES CXX)
+project(Deltos VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -7,9 +7,17 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Gui Concurrent Network)
-find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs dnn)
+# No imgcodecs: images come and go through Qt, and OpenCV's codec module
+# drags in a stack of image and video codecs nothing here decodes.
+find_package(OpenCV REQUIRED COMPONENTS core imgproc dnn)
 if(OpenCV_VERSION VERSION_GREATER_EQUAL 5)
     find_package(OpenCV REQUIRED COMPONENTS geometry)
+elseif(OpenCV_VERSION VERSION_LESS 4.7)
+    # Measured: 4.7 reads the model, 4.6 (Ubuntu 24.04) does not -- it cannot
+    # parse the opset-13 Squeeze the backbone is built from. Everything still
+    # builds and runs, but the document is found by edge detection alone.
+    message(WARNING "OpenCV ${OpenCV_VERSION} is too old to load the detection model; "
+                    "detection will fall back to edges only. 4.7 or newer is needed.")
 endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(Tesseract REQUIRED IMPORTED_TARGET tesseract)
@@ -43,7 +51,7 @@ if(HEIF_FOUND)
 endif()
 
 # GUI application
-add_executable(deltos
+set(DELTOS_SOURCES
     src/main.cpp
     src/cli/Cli.h src/cli/Cli.cpp
     src/ui/MainWindow.h src/ui/MainWindow.cpp
@@ -59,6 +67,7 @@ add_executable(deltos
     third_party/qrcodegen/qrcodegen.hpp third_party/qrcodegen/qrcodegen.cpp
     icons/deltos.qrc
 )
+add_executable(deltos ${DELTOS_SOURCES})
 target_include_directories(deltos PRIVATE third_party/qrcodegen)
 target_link_libraries(deltos PRIVATE deltos_core Qt6::Widgets Qt6::Gui Qt6::Concurrent Qt6::Network)
 
@@ -72,21 +81,32 @@ if(APPLE)
     set_target_properties(deltos PROPERTIES
         MACOSX_BUNDLE ON
         MACOSX_BUNDLE_BUNDLE_NAME Deltos
-        MACOSX_BUNDLE_GUI_IDENTIFIER onl.ycode.deltos
+        MACOSX_BUNDLE_GUI_IDENTIFIER onl.ycode.Deltos
         MACOSX_BUNDLE_ICON_FILE deltos.icns
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION})
 elseif(WIN32)
     target_sources(deltos PRIVATE icons/deltos.rc)
     set_target_properties(deltos PROPERTIES WIN32_EXECUTABLE ON)
+    # The same program again, as a console application. A Windows GUI binary
+    # detaches from the shell that started it: the prompt comes back at once and
+    # whatever it prints goes nowhere, which makes --no-gui useless. deltos-cli
+    # is what a script or a command prompt should call.
+    add_executable(deltos-cli ${DELTOS_SOURCES} icons/deltos.rc)
+    target_include_directories(deltos-cli PRIVATE third_party/qrcodegen)
+    target_link_libraries(deltos-cli PRIVATE deltos_core Qt6::Widgets Qt6::Gui Qt6::Concurrent Qt6::Network)
 else()
     include(GNUInstallDirs)
     install(TARGETS deltos RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(FILES ${DELTOS_MODEL} DESTINATION ${CMAKE_INSTALL_DATADIR}/deltos/models)
-    install(FILES icons/deltos.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-    install(FILES icons/deltos.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+    # Desktop entry, icons and metadata are named after the application id, which
+    # is what Flatpak requires and what the desktop shells match a window to.
+    install(FILES icons/onl.ycode.Deltos.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    install(FILES icons/onl.ycode.Deltos.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
+    install(FILES docs/deltos.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+    install(FILES icons/onl.ycode.Deltos.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
     foreach(s 16 32 48 64 128 256 512)
-        install(FILES icons/deltos-${s}.png DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${s}x${s}/apps RENAME deltos.png)
+        install(FILES icons/deltos-${s}.png DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${s}x${s}/apps RENAME onl.ycode.Deltos.png)
     endforeach()
 endif()
 

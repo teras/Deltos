@@ -73,9 +73,11 @@ std::vector<std::string> availableLanguages(const std::string& tessdataDir) {
     const char* dataDir = dir.empty() ? nullptr : dir.c_str();
     tesseract::TessBaseAPI api;
     // Listing needs an initialised instance, and Init needs a language that
-    // exists: try the ones we ship against before giving up.
+    // exists: try the ones we ship against before giving up. The engine has to
+    // be the one we recognise with -- Debian and Ubuntu package tessdata_fast,
+    // which holds no legacy model at all, so asking for it finds nothing.
     for (const char* probe : {"eng", "ell", "osd"})
-        if (api.Init(dataDir, probe, tesseract::OEM_TESSERACT_ONLY) == 0) {
+        if (api.Init(dataDir, probe, tesseract::OEM_LSTM_ONLY) == 0) {
             std::vector<std::string> langs;
             api.GetAvailableLanguagesAsVector(&langs);
             std::sort(langs.begin(), langs.end());
@@ -110,6 +112,13 @@ std::string defaultLanguage(const std::string& tessdataDir) {
 Result run(const cv::Mat& img, const std::string& language, const std::string& tessdataDir) {
     Result r;
     if (img.empty()) return r;
+    // Tesseract accepts an empty language specification and then dereferences a
+    // null inside Recognize, so the one case where we have nothing to recognise
+    // in has to be caught here rather than by the failed Init below.
+    if (language.empty()) {
+        std::cerr << "Ocr: no recognition language is installed\n";
+        return r;
+    }
 
     cv::Mat gray;
     if (img.channels() == 3) cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);

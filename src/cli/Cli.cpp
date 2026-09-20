@@ -1,4 +1,5 @@
 #include "Cli.h"
+#include "core/CvQt.h"
 #include "core/ImageLoader.h"
 #include "core/Models.h"
 #include "core/Ocr.h"
@@ -9,7 +10,6 @@
 #include <QFileInfo>
 #include <QSettings>
 #include <QString>
-#include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
 #include <string>
@@ -145,7 +145,10 @@ int runCli(const Options& opt) {
             }
             if (s.refQuad)
                 for (int i = 0; i < 4; ++i) cv::line(d, (*s.refQuad)[i], (*s.refQuad)[(i + 1) % 4], {255, 128, 0}, thick);
-            cv::imwrite(numbered(debug, n, opt.inputs.size()), d);
+            // Saved through Qt, which is already here for everything else:
+            // OpenCV's imgcodecs would drag in a stack of image and video
+            // codecs for this one debugging line.
+            matToQImage(d).save(QString::fromStdString(numbered(debug, n, opt.inputs.size())));
         }
         if (format == "pdf") pages.push_back(pdfPage(s.image, opt.process.mode, s.widthMm));
         else if (!format.isEmpty() && !saveImage(outPath, format, s.image, opt.process.mode, s.widthMm)) {

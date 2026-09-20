@@ -8,9 +8,13 @@ namespace deltos::Tessdata {
 QString userDir();
 
 // The directory Tesseract resolves on its own: the system packages on Linux and
-// Homebrew, the files shipped beside the application otherwise. Empty if it
-// cannot init at all, which means nothing is installed anywhere.
+// Homebrew. Empty when it cannot init at all, which means the machine has none.
 QString defaultDir();
+
+// The languages shipped with the application, looked for beside the executable.
+// This is all there is inside an AppImage, an app bundle or a Windows install,
+// where no system Tesseract exists to be asked.
+QString bundledDir();
 
 // The one datapath to hand to Tesseract, since it only takes one. Empty while
 // nothing has been downloaded -- then Tesseract's own lookup is left alone,

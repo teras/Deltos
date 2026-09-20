@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>onl.ycode.Deltos</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+
+  <name>Deltos</name>
+  <summary>Turn photos of documents into flat, upright, correctly-sized scans</summary>
+
+  <description>
+    <p>
+      Deltos is a desktop document scanner that needs no scanner. Photograph a
+      document at any angle and it returns a flat, upright page with its real
+      physical dimensions, ready to export as PDF, PNG or JPG.
+    </p>
+    <p>Each photo goes through the same pipeline:</p>
+    <ul>
+      <li>The page is found with a neural detector and classic edge detection together, so it works on cluttered desks as well as clean ones.</li>
+      <li>Its true proportions are recovered from the perspective, using the focal length recorded by the camera.</li>
+      <li>Its physical size comes from a reference card beside it, the camera's depth measurement, or the standard paper size it matches — and the source of that number is always shown.</li>
+      <li>The page is rectified, its lighting evened out in colour, grayscale or black and white, and turned upright.</li>
+      <li>Its text can be recognised, selected with the mouse and copied, in as many languages as are installed.</li>
+    </ul>
+    <p>
+      Photos can also be sent straight from a phone over the local network, and
+      everything the interface does is available from the command line.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">onl.ycode.Deltos.desktop</launchable>
+
+  <developer id="onl.ycode">
+    <name>Panayotis Katsaloulis</name>
+  </developer>
+
+  <url type="homepage">https://github.com/teras/Deltos</url>
+  <url type="bugtracker">https://github.com/teras/Deltos/issues</url>
+  <url type="vcs-browser">https://github.com/teras/Deltos</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>A sheet photographed at an angle, rectified, measured as A4 and read</caption>
+      <image width="1600" height="1019">https://raw.githubusercontent.com/teras/Deltos/main/docs/screenshot-en.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Text recognised in any installed language, ready to be selected and copied</caption>
+      <image width="1600" height="1019">https://raw.githubusercontent.com/teras/Deltos/main/docs/screenshot-el.png</image>
+    </screenshot>
+  </screenshots>
+
+  <categories>
+    <category>Graphics</category>
+    <category>Office</category>
+    <category>Scanning</category>
+  </categories>
+
+  <keywords>
+    <keyword>scanner</keyword>
+    <keyword>document</keyword>
+    <keyword>perspective</keyword>
+    <keyword>OCR</keyword>
+    <keyword>PDF</keyword>
+  </keywords>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.0" date="2026-09-20">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

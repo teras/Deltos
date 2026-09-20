@@ -1,0 +1,27 @@
+# Maintainer: Panayotis Katsaloulis <panayotis@panayotis.com>
+pkgname=deltos
+pkgver=1.0
+pkgrel=1
+pkgdesc="Turn photos of documents into flat, upright, correctly-sized scans"
+arch=('x86_64' 'aarch64')
+url="https://github.com/teras/Deltos"
+license=('GPL-3.0-only')
+depends=('qt6-base' 'opencv>=4.7' 'tesseract' 'leptonica' 'libheif'
+         'tesseract-data-eng' 'tesseract-data-osd')
+makedepends=('cmake' 'pkgconf')
+optdepends=('kimageformats: HEIC/HEIF photos from iPhones'
+            'tesseract-data-ell: recognise Greek text')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cmake -S "Deltos-$pkgver" -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+    install -Dm644 "Deltos-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

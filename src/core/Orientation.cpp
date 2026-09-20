@@ -83,6 +83,7 @@ Result detect(const cv::Mat& img, const std::string& tessdataDir) {
     // installed traineddata. Which language hardly matters here -- the score only
     // counts clean, confident words -- but it must not be someone's favourite two.
     const std::string language = Ocr::defaultLanguage(dir);
+    if (language.empty()) return r;   // nothing installed: recognising in nothing crashes Tesseract
 
     cv::parallel_for_(cv::Range(0, int(tasks.size())), [&](const cv::Range& range) {
         for (int i = range.start; i < range.end; ++i) {

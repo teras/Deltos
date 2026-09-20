@@ -1,0 +1,28 @@
+  @page { size: A4; margin: 13mm 14mm 10mm 14mm; }
+  body { font-family: "DejaVu Sans", "Liberation Sans", sans-serif; font-size: 9pt;
+         color: #111; line-height: 1.35; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start;
+          border-bottom: 2.5pt solid #111; padding-bottom: 4mm; }
+  .issuer { font-size: 9pt; color: #333; text-align: right; min-width: 66mm; }
+  h1 { font-size: 19pt; margin: 0 0 1mm 0; letter-spacing: 0.4pt; }
+  .sub { font-size: 11pt; color: #444; margin: 0; }
+  .grid { display: flex; gap: 8mm; margin: 6mm 0; }
+  .box { border: 0.8pt solid #888; padding: 3mm; flex: 1; }
+  .box h2 { font-size: 9pt; letter-spacing: 0.6pt; margin: 0 0 2mm 0; color: #555; }
+  .big { font-size: 15pt; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; margin-top: 3mm; }
+  th, td { border-bottom: 0.5pt solid #bbb; padding: 1.3mm 2mm; text-align: left; }
+  th { font-size: 8.5pt; color: #555; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tfoot td { font-weight: bold; border-top: 1.2pt solid #111; border-bottom: none; }
+  .fine { font-size: 6pt; color: #333; text-align: justify; margin-top: 3mm;
+          column-count: 2; column-gap: 6mm; }
+  .ruler { margin-top: 3mm; }
+  .ruler .bar { height: 3mm; width: 100mm; border: 0.6pt solid #111;
+                background: repeating-linear-gradient(to right, #111, #111 10mm, #fff 10mm, #fff 20mm); }
+  .ruler span { font-size: 7pt; color: #444; }
+  .mrz { font-family: "DejaVu Sans Mono", monospace; font-size: 10pt;
+         letter-spacing: 1pt; margin-top: 3mm; }
+  .foot { margin-top: 3mm; font-size: 8pt; color: #444;
+          border-top: 0.5pt solid #bbb; padding-top: 2mm;
+          display: flex; justify-content: space-between; }

@@ -1,0 +1,103 @@
+.TH DELTOS 1 "September 2026" "deltos 1.0" "User Commands"
+.SH NAME
+deltos \- turn photos of documents into flat, upright, correctly-sized scans
+.SH SYNOPSIS
+.B deltos
+[\fIOPTION\fR]... [\fIIMAGE\fR]...
+.SH DESCRIPTION
+.B deltos
+takes a photograph of a document at any angle and returns a flat, upright page
+with its real physical dimensions, which it can export as PDF, PNG or JPG.
+.PP
+The page is located with a neural detector and classic edge detection together,
+its true proportions are recovered from the perspective using the focal length
+recorded by the camera, and its physical size comes from a reference card lying
+beside it, the camera's depth measurement, or the standard paper size it
+matches. It is then rectified, its lighting evened out, and turned upright.
+.PP
+Without \fB\-\-no\-gui\fR the images open in a window; with it the analysis is
+printed and, with \fB\-\-out\fR, written to a file.
+.SH OPTIONS
+.TP
+.B \-\-no\-gui
+Run headless. Without it the images open in the window.
+.TP
+.BI \-\-out " FILE"
+Write the result.
+.I .pdf
+takes any number of images, one page each;
+.I .png
+and
+.I .jpg
+take exactly one. Without it only the analysis is printed. Applies only
+together with \fB\-\-no\-gui\fR.
+.TP
+.BI \-\-mode " MODE"
+.IR color " (default), " gray " or " bw .
+.TP
+.BI \-\-strength " 0-100"
+Enhancement strength, 50 by default. Its meaning depends on the mode: it blends
+the enhancement in colour and grayscale, and sets the threshold in black and
+white.
+.TP
+.BI \-\-model " FILE"
+DocAligner ONNX model to use, instead of the one shipped with the program.
+.TP
+.B \-\-no\-model
+Use edge detection alone.
+.TP
+.BI \-\-focal " PX"
+Camera focal length in pixels. Taken from the EXIF metadata by default.
+.TP
+.B \-\-self\-focal
+Estimate the focal length from the image rather than from EXIF.
+.TP
+.B \-\-no\-snap
+Do not snap the aspect ratio to a standard paper size.
+.TP
+.B \-\-ocr
+Also read the text of each page. It is printed here, and can be selected with
+the mouse in the window.
+.TP
+.BI \-\-ocr\-lang " SPEC"
+Tesseract language or languages for \fB\-\-ocr\fR, joined with
+.RB ` + '.
+The first one is the primary language. Defaults to the language last picked in
+the window, otherwise to the system language paired with English.
+.TP
+.B \-\-bgr
+Feed the model BGR instead of RGB.
+.TP
+.BI \-\-dpi " N"
+Page density for images whose physical size is unknown. 300 by default.
+.SH ENVIRONMENT
+.TP
+.B DELTOS_DEBUG
+Draws the detected quadrilateral on the source image and saves it under this
+name. With several images, \fI\-1\fR, \fI\-2\fR and so on are inserted before
+the extension.
+.TP
+.B DELTOS_ORIENT_DEBUG
+Print the score of each rotation the orientation fallback tried.
+.SH FILES
+.TP
+.I ~/.config/deltos.conf
+The recognition language and whether the phone receiver is on.
+.TP
+.I ~/.local/share/deltos/tessdata
+Language models downloaded through the window, alongside those installed on the
+system.
+.SH EXAMPLES
+.TP
+Analyse one photograph and print what was found:
+.B deltos \-\-no\-gui photo.jpg
+.TP
+Turn several photographs into one PDF, each page at its own physical size:
+.B deltos \-\-no\-gui \-\-out scan.pdf page1.jpg page2.jpg
+.TP
+Read a Greek page in black and white:
+.B deltos \-\-no\-gui \-\-mode bw \-\-ocr \-\-ocr\-lang ell+eng bill.jpg
+.SH SEE ALSO
+.BR tesseract (1)
+.SH AUTHOR
+Panayotis Katsaloulis

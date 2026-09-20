@@ -1,0 +1,32 @@
+# Plain build of every push, so a compile error never waits for a tag.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    steps:
+      - name: Install dependencies
+        run: |
+          set -eux
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates build-essential cmake pkgconf \
+            qt6-base-dev qt6-base-dev-tools libopencv-dev libtesseract-dev libleptonica-dev libheif-dev \
+            tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd desktop-file-utils appstream
+      - uses: actions/checkout@v5
+      - name: Configure and build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+      - name: Check the metadata
+        run: |
+          desktop-file-validate icons/onl.ycode.Deltos.desktop
+          appstreamcli validate --no-net icons/onl.ycode.Deltos.metainfo.xml
+      - name: Analyse a photo
+        run: ./build/deltos --no-gui --ocr tests/images/card.jpg
