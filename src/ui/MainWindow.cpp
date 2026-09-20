@@ -355,6 +355,15 @@ void MainWindow::currentChanged(int row) {
     strength_->blockSignals(false);
     updateStrengthTip();
     showResult(row);
+    // The status line belongs to the page in view: the word count of the page we
+    // just left, still sitting there, reads as if this one had been recognised.
+    if (p.ocrDone)
+        status_->setText(p.ocr.words.empty() ? tr("No text found")
+                                             : tr("%n word(s) recognised", nullptr, int(p.ocr.words.size())));
+    else if (!p.detection.isEmpty())
+        status_->setText(tr("Detection: %1").arg(p.detection));   // confidence belongs to the run, not the page
+    else
+        status_->clear();
 }
 
 void MainWindow::showResult(int row) {
