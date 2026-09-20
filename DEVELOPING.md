@@ -131,6 +131,22 @@ Releases are published as prereleases; `gh release edit v1.1 --latest` promotes
 one. The recipes require OpenCV 4.7 so that a package whose detector could never
 load cannot be built by accident.
 
+The Windows job assembles one tree and ships it three ways: a zip, an NSIS
+installer, and an MSIX package for the Microsoft Store made from
+`packaging/windows/AppxManifest.xml`. The package is not signed and is not
+attached to the release: the Store signs what it accepts, so it is uploaded to
+Partner Center by hand from the workflow run. The identity in the manifest is
+the one Partner Center assigned and has to match it exactly. To get the Windows
+packages of a branch without releasing anything, start the workflow by hand
+(`gh workflow run release.yml -f version=1.1`); only the Windows job runs.
+
+The package can be tried before the Store has signed it: turn on Developer Mode,
+unpack it and run `Add-AppxPackage -Register AppxManifest.xml` in the unpacked
+tree, then start Deltos from the Start menu so that it runs with the package
+identity. Unpack with `makeappx unpack`: file names inside the package are
+percent-encoded, and an ordinary unzip leaves `libstdc%2B%2B-6.dll`, which
+nothing finds.
+
 The two self-contained builds each carry their own OpenCV, Leptonica and
 Tesseract, plus English and the orientation data; everything else is downloaded
 at run time as usual. The Flatpak builds against `org.kde.Platform` 6.11. The

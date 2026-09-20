@@ -6,9 +6,18 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # By hand, for the Windows packages of a branch and nothing else: the Store
+  # package can only be made on Windows, and trying one should not take a
+  # release. The Linux jobs sit this out, and with them the release that needs them.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to stamp on the packages
+        default: '1.0'
 
 jobs:
   arch:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     steps:
@@ -31,6 +40,7 @@ jobs:
           path: out/*
 
   fedora:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
@@ -52,6 +62,7 @@ jobs:
           path: out/*
 
   deb:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -101,6 +112,7 @@ jobs:
   # against, and the whole job was rehearsed in this exact container before it
   # was written here.
   flatpak:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     container:
       image: fedora:latest
@@ -131,6 +143,7 @@ jobs:
   # Leptonica and Tesseract are built inside, since bookworm's OpenCV is 4.6 and
   # cannot read the detection model.
   appimage:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     container:
       image: debian:bookworm
@@ -153,6 +166,8 @@ jobs:
   # collecting the result rather than building its dependencies.
   windows:
     runs-on: windows-latest
+    env:
+      VERSION: ${{ inputs.version || github.ref_name }}
     defaults:
       run:
         shell: msys2 {0}
@@ -175,6 +190,7 @@ jobs:
             mingw-w64-x86_64-leptonica
             mingw-w64-x86_64-libheif
             mingw-w64-x86_64-nsis
+            mingw-w64-x86_64-librsvg
             zip
       - name: Build
         run: |
@@ -184,7 +200,7 @@ jobs:
       - name: Assemble
         run: |
           set -eux
-          version="${GITHUB_REF_NAME#v}"
+          version="${VERSION#v}"
           app=dist/Deltos
           mkdir -p "$app"
           cp build/deltos.exe build/deltos-cli.exe "$app/"
@@ -223,6 +239,38 @@ jobs:
           # straight from a web page is what browsers refuse to download.
           (cd dist && zip -qj "../out/Deltos-${version}-windows-setup.zip" "Deltos-${version}-setup.exe")
           ls -l out
+      # The same tree once more, as a package for the Microsoft Store. Nothing
+      # signs it here and nothing has to: the Store signs what it accepts, which
+      # is the one way to a trusted installation that costs nothing.
+      - name: Store package
+        run: |
+          set -eux
+          version="${VERSION#v}"
+          app=dist/Deltos
+          # The Store wants four numbers and keeps the last one for itself.
+          IFS=. read -r major minor patch _ <<< "$version"
+          sed "s/^\( *\)Version=\"[^\"]*\"/\1Version=\"$major.${minor:-0}.${patch:-0}.0\"/" \
+              packaging/windows/AppxManifest.xml > "$app/AppxManifest.xml"
+          mkdir -p "$app/Assets"
+          icon() { rsvg-convert -w "$1" -h "$1" -o "$app/Assets/$2.png" icons/onl.ycode.Deltos.svg; }
+          icon 50 StoreLogo
+          icon 150 Square150x150Logo
+          icon 44 Square44x44Logo
+          # Without the unplated variants the taskbar sets the icon on a tile, and
+          # names qualified like these are only found through a resource index.
+          for size in 16 24 32 48 256; do
+            icon "$size" "Square44x44Logo.targetsize-${size}_altform-unplated"
+          done
+          # The SDK tools are not on the PATH, and MSYS would turn their
+          # /switches into paths.
+          export MSYS2_ARG_CONV_EXCL='*'
+          sdk="$(ls -d '/c/Program Files (x86)/Windows Kits/10/bin/'10.*/x64 | sort -V | tail -n 1)"
+          root="$(cygpath -w "$PWD/$app")"
+          config="$(cygpath -w "$PWD/build/priconfig.xml")"
+          "$sdk/makepri.exe" createconfig /cf "$config" /dq en-US /o
+          "$sdk/makepri.exe" new /pr "$root" /cf "$config" /of "$root\\resources.pri" /o
+          "$sdk/makeappx.exe" pack /d "$root" /p "$(cygpath -w "$PWD/out/Deltos-${version}.msix")" /o
+          ls -l out
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -240,6 +288,9 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+      # Unsigned until the Store signs it, the Store package installs nowhere:
+      # it goes to Partner Center from the workflow run, not to the release.
+      - run: rm -f dist/*.msix
       # None of this is signed with a code-signing certificate, which costs
       # money we are not spending. What can be had for nothing is proof of where
       # a file came from: each one is attested to this workflow and this commit,
