@@ -23,12 +23,11 @@ Those two version numbers are floors, not preferences. Qt 6.3 is where
 opset-13 `Squeeze` the backbone is built from, and detection then falls back to
 edges alone, which CMake warns about at configure time.
 
-HEIC *decoding* comes from the Qt image-format plugins (kimageformats), not from
-libheif; without them HEIC files cannot be opened at all. There is no such
-plugin for Qt 6 in MSYS2, so the Windows build reads no HEIC — photographs sent
-from an iPhone through the browser arrive as JPEG and are unaffected, but a
-HEIC file opened directly will not load. Decoding it with libheif ourselves,
-which is linked in already, would fix that everywhere at once.
+HEIC is read through the Qt image-format plugins (kimageformats) where they
+exist, and with libheif directly where they do not — which is everywhere on
+Windows and on any Linux without that package. libheif turns the picture the
+right way up by itself; applying the EXIF orientation on top of it lays the
+image on its side.
 
 OpenCV 5 moved `contourArea`, `approxPolyDP`, `getPerspectiveTransform` and
 friends into a `geometry` module, so code that uses them includes

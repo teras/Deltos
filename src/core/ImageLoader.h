@@ -13,7 +13,8 @@ struct LoadedImage {
     std::string error;
 };
 
-// Loads any format Qt can read (JPEG, PNG, HEIC via plugin, ...), applies EXIF orientation.
+// Loads any format Qt can read (JPEG, PNG, TIFF, ...) and HEIC whether or not
+// Qt has a plugin for it, applying the orientation the file asks for.
 LoadedImage loadImage(const std::string& path);
 
 } // namespace deltos
